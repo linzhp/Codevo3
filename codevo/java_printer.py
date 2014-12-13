@@ -4,10 +4,10 @@ from plyj.model import Visitor
 class JavaPrinter(Visitor):
     """
     Reason for traversing substree in "visit" method:
-    -subnodes may be mixed with other strings during printing
+    * subnodes may be mixed with other strings during printing
 
     Reason for not implementing it in __str__ method of AST nodes:
-    -indents are context-dependent
+    * indents are context-dependent
     """
     def __init__(self):
         super(JavaPrinter, self).__init__()
@@ -67,3 +67,10 @@ class JavaPrinter(Visitor):
 
     def visit_Variable(self, variable):
         self.result += variable.name
+
+    def visit_Name(self, name):
+        self.result += name.value
+
+    def visit_MethodInvocation(self, method):
+        method.target.accept(self)
+        self.result += '.' + method.name + '()'

@@ -1,5 +1,6 @@
 from plyj.model import *
 from random import random
+from codevo.utils import sample
 
 class CodeModifier:
     def __init__(self):
@@ -41,10 +42,13 @@ class CodeModifier:
 
 
 class Evolver:
-    def __init__(self):
+    def __init__(self, classes):
         self.a1 = 0.3
         self.a2 = 0.3
         self.code_modifier = CodeModifier()
+        self.classes = classes
+        self.methods = {}
+        self.callers = {}
 
     def step(self):
         if random() < self.a1:
@@ -57,10 +61,20 @@ class Evolver:
         if random() < self.a2:
             klass = self.create_class()
         else:
-            pass
+            klass = sample(self.classes, [len(c.body) for c in self.classes])
+        method = self.code_modifier.create_method(klass)
+        self.methods[method.name] = (method, klass)
+        self.callers[method.name] = []
+        return method
 
     def call_method(self):
-        pass
+        method_names = self.methods.keys()
+        caller_name = sample(method_names, [len(self.methods[m][0].body) for m in method_names])
+        caller = self.methods[caller_name][0]
+        callee_name = sample(method_names, [len(self.callers[m]) for m in self.callers])
+        target = self.methods[callee_name][1]
+        caller.body.append(MethodInvocation(callee_name, target=Name(target.name)))
+        self.callers[callee_name].append(caller_name)
 
     def create_class(self):
         pass

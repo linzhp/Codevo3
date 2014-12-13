@@ -18,14 +18,14 @@ public class Foo {
     def test_print_method(self):
         parser = Parser()
         tree = parser.parse_string('''public class Foo{
-                                        static void bar() { int i = 1; }
+                                        static void bar() { double d = Math.random(); }
                                     }''')
         printer = JavaPrinter()
         tree.accept(printer)
         self.assertEqual('''
 public class Foo {
     static void bar() {
-        int i = 1;
+        double d = Math.random();
     }
 }
         '''.strip(), printer.result)
