@@ -21,7 +21,9 @@ class JavaPrinter(Visitor):
 
         self.result += 'class ' + class_declaration.name + ' '
         if class_declaration.extends:
-            self.result += 'extends ' + class_declaration.extends + ' '
+            self.result += 'extends '
+            class_declaration.extends.accept(self)
+            self.result += ' '
         self.result += '{\n'
         self.indent += 1
         for elem in class_declaration.body:
@@ -74,3 +76,6 @@ class JavaPrinter(Visitor):
     def visit_MethodInvocation(self, method):
         method.target.accept(self)
         self.result += '.' + method.name + '()'
+
+    def visit_Type(self, type):
+        type.name.accept(self)
