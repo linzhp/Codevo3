@@ -90,7 +90,7 @@ class Evolver:
         return method
 
     def call_method(self):
-        method_names = self.methods.keys()
+        method_names = list(self.methods.keys())
         caller_name = sample(method_names, [len(self.methods[m][0].body) for m in method_names])
         caller = self.methods[caller_name][0]
         callee_name = sample(method_names, [len(self.callers[m]) for m in self.callers])

@@ -14,7 +14,6 @@ public class Foo extends Bar {
 }
         '''.strip(), printer.result)
 
-
     def test_print_method(self):
         parser = Parser()
         tree = parser.parse_string('''public class Foo{

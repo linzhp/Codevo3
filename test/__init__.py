@@ -19,3 +19,12 @@ class EvolverTest(TestCase):
             self.assertIsInstance(method, MethodDeclaration)
             self.assertIsNotNone(evolver.methods[method.name])
             self.assertEqual(evolver.callers[method.name], [])
+
+    def test_call_method(self):
+        evolver = codevo.Evolver()
+        method = list(evolver.methods.values())[0][0]
+        body_size = len(method.body)
+        evolver.call_method()
+        self.assertEqual(len(method.body), body_size + 1)
+        self.assertIsInstance(method.body[-1], MethodInvocation)
+        self.assertEqual(len(evolver.callers[method.name]), 1)
