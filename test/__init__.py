@@ -28,3 +28,11 @@ class EvolverTest(TestCase):
         self.assertEqual(len(method.body), body_size + 1)
         self.assertIsInstance(method.body[-1], MethodInvocation)
         self.assertEqual(len(evolver.callers[method.name]), 1)
+
+    def test_create_class(self):
+        evolver = codevo.Evolver()
+        with patch.object(codevo, 'random', return_value=1):
+            klass = evolver.create_class()
+            self.assertIsInstance(klass, ClassDeclaration)
+            self.assertIs(evolver.classes[-1], klass)
+            self.assertEqual(evolver.subclasses[klass.name], [])

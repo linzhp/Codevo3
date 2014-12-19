@@ -24,7 +24,7 @@ class CodeModifier:
         class_node.body.remove(method)
 
     def create_class(self, superclass_name):
-        klass = ClassDeclaration('Class' + str(self.counter))
+        klass = ClassDeclaration('Class' + str(self.counter), [])
         if superclass_name:
             klass.extends = Type(Name(superclass_name))
         self.counter += 1
@@ -101,7 +101,7 @@ class Evolver:
     def create_class(self):
         superclass_name = None
         if random() > self.a3:
-            class_names = self.subclasses.keys()
+            class_names = list(self.subclasses.keys())
             superclass_name = sample(class_names, [len(self.subclasses[c]) for c in class_names])
         klass = self.code_modifier.create_class(superclass_name)
         if superclass_name:
