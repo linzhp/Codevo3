@@ -3,6 +3,7 @@ from plyj.parser import Parser
 from random import random
 from codevo.utils import sample
 from os import path
+from networkx import DiGraph
 
 
 class CodeModifier:
@@ -61,16 +62,14 @@ class Evolver:
         self.a2 = 0.3
         self.a3 = 0.3
         self.code_modifier = CodeModifier()
-        self.classes = initial_classes
-        self.methods = {}
-        self.callers = {}
-        self.subclasses = {}
+        self.inheritance_graph = DiGraph()
+        self.reference_graph = DiGraph()
+
         for c in initial_classes:
-            self.subclasses[c.name] = []
+            self.inheritance_graph.add_node(c.name, {'class': c})
             for m in c.body:
                 if isinstance(m, MethodDeclaration):
-                    self.methods[m.name] = (m, c)
-                    self.callers[m.name] = []
+                    self.reference_graph.add_node(m.name, {'method': m, 'class': c})
 
     def step(self):
         if random() < self.a1:
@@ -83,29 +82,41 @@ class Evolver:
         if random() < self.a2:
             klass = self.create_class()
         else:
-            klass = sample(self.classes, [len(c.body) for c in self.classes])
+            classes = []
+            sizes = []
+            for node, data in self.inheritance_graph.nodes_iter(data=True):
+                classes.append(data['class'])
+                sizes.append(len(data['class'].body))
+            klass = sample(classes, sizes)
         method = self.code_modifier.create_method(klass)
-        self.methods[method.name] = (method, klass)
-        self.callers[method.name] = []
+        self.reference_graph.add_node(method.name, {'method': method, 'class': klass})
         return method
 
     def call_method(self):
-        method_names = list(self.methods.keys())
-        caller_name = sample(method_names, [len(self.methods[m][0].body) for m in method_names])
-        caller = self.methods[caller_name][0]
-        callee_name = sample(method_names, [len(self.callers[m]) for m in self.callers])
-        target = self.methods[callee_name][1]
-        caller.body.append(MethodInvocation(callee_name, target=Name(target.name)))
-        self.callers[callee_name].append(caller_name)
+        methods = []
+        sizes = []
+        in_degrees = []
+        for node, data in self.reference_graph.nodes_iter(True):
+            methods.append(data)
+            sizes.append(len(data['method'].body))
+            in_degrees.append(self.reference_graph.in_degree(node))
+        caller_info = sample(methods, sizes)
+        callee_info = sample(methods, in_degrees)
+        caller_info['method'].body.append(
+            MethodInvocation(callee_info['method'].name, target=Name(callee_info['class'].name)))
+        self.reference_graph.add_edge(caller_info['method'].name, callee_info['method'].name)
 
     def create_class(self):
         superclass_name = None
         if random() > self.a3:
-            class_names = list(self.subclasses.keys())
-            superclass_name = sample(class_names, [len(self.subclasses[c]) for c in class_names])
+            class_names = []
+            num_subclasses = []
+            for node in self.inheritance_graph.nodes_iter():
+                class_names.append(node)
+                num_subclasses.append(self.inheritance_graph.in_degree(node))
+            superclass_name = sample(class_names, num_subclasses)
         klass = self.code_modifier.create_class(superclass_name)
+        self.inheritance_graph.add_node(klass.name, {'class': klass})
         if superclass_name:
-            self.subclasses[superclass_name].append(klass.name)
-        self.classes.append(klass)
-        self.subclasses[klass.name] = []
+            self.inheritance_graph.add_edge(klass.name, superclass_name)
         return klass

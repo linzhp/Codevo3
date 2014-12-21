@@ -17,22 +17,23 @@ class EvolverTest(TestCase):
         with patch.object(codevo, 'random', return_value=1):
             method = evolver.create_method()
             self.assertIsInstance(method, MethodDeclaration)
-            self.assertIsNotNone(evolver.methods[method.name])
-            self.assertEqual(evolver.callers[method.name], [])
+            self.assertIn(method.name, evolver.reference_graph)
+            self.assertEqual(evolver.reference_graph.in_degree(method.name), 0)
 
     def test_call_method(self):
         evolver = codevo.Evolver()
-        method = list(evolver.methods.values())[0][0]
+        method_name = next(evolver.reference_graph.nodes_iter())
+        method = evolver.reference_graph.node[method_name]['method']
         body_size = len(method.body)
         evolver.call_method()
         self.assertEqual(len(method.body), body_size + 1)
         self.assertIsInstance(method.body[-1], MethodInvocation)
-        self.assertEqual(len(evolver.callers[method.name]), 1)
+        self.assertEqual(evolver.reference_graph.in_degree(method_name), 1)
 
     def test_create_class(self):
         evolver = codevo.Evolver()
         with patch.object(codevo, 'random', return_value=1):
             klass = evolver.create_class()
             self.assertIsInstance(klass, ClassDeclaration)
-            self.assertIs(evolver.classes[-1], klass)
-            self.assertEqual(evolver.subclasses[klass.name], [])
+            self.assertIs(evolver.inheritance_graph.node[klass.name]['class'], klass)
+            self.assertEqual(evolver.inheritance_graph.in_degree(klass.name), 0)
