@@ -15,7 +15,7 @@ class CodeModifier:
         The created methods are static methods for now
         """
         method = MethodDeclaration(
-            'method_' + str(self.counter),
+            'method' + str(self.counter),
             body=[], modifiers=['static'])
         self.counter += 1
         class_node.body.append(method)
