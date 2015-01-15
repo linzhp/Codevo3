@@ -9,9 +9,9 @@ if __name__ == '__main__':
     with open('references.csv', 'w') as ref_file:
         writer = csv.DictWriter(ref_file, ['method', 'class', 'ref_count'])
         writer.writeheader()
-        for method_name, data in evolver.reference_graph.nodes_iter(True):
+        for method_name, in_degree in evolver.reference_graph.in_degree_iter():
             writer.writerow({
                 'method': method_name,
-                'class': data['class'].name,
-                'ref_count': evolver.reference_graph.in_degree(method_name)
+                'class': evolver.reference_graph.node[method_name]['class'].name,
+                'ref_count': in_degree
             })
