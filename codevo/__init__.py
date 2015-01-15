@@ -58,9 +58,9 @@ class Evolver:
                 parser = Parser()
                 tree = parser.parse_file(java_file)
                 initial_classes = tree.type_declarations
-        self.a1 = 0.3
-        self.a2 = 0.3
-        self.a3 = 0.3
+        self.a1 = 0.1
+        self.a2 = 0.1
+        self.a3 = 0.1
         self.code_modifier = CodeModifier()
         self.inheritance_graph = DiGraph()
         self.reference_graph = DiGraph()
@@ -96,10 +96,12 @@ class Evolver:
         methods = []
         sizes = []
         in_degrees = []
-        for node, data in self.reference_graph.nodes_iter(True):
+        for node, in_degree in self.reference_graph.in_degree_iter():
+            in_degrees.append(in_degree)
+            data = self.reference_graph.node[node]
             methods.append(data)
             sizes.append(len(data['method'].body))
-            in_degrees.append(self.reference_graph.in_degree(node))
+
         caller_info = sample(methods, sizes)
         callee_info = sample(methods, in_degrees)
         caller_info['method'].body.append(
@@ -111,9 +113,10 @@ class Evolver:
         if random() > self.a3:
             class_names = []
             num_subclasses = []
-            for node in self.inheritance_graph.nodes_iter():
+            for node, in_degree in self.inheritance_graph.in_degree_iter():
                 class_names.append(node)
-                num_subclasses.append(self.inheritance_graph.in_degree(node))
+                num_subclasses.append(in_degree)
+
             superclass_name = sample(class_names, num_subclasses)
         klass = self.code_modifier.create_class(superclass_name)
         self.inheritance_graph.add_node(klass.name, {'class': klass})
