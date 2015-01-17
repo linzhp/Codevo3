@@ -1,4 +1,4 @@
-from plyj.model import *
+from plyj.model import MethodDeclaration
 from plyj.parser import Parser
 from random import random
 from codevo.utils import sample
@@ -19,6 +19,9 @@ class Evolver:
                 tree = parser.parse_file(java_file)
                 initial_classes = tree.type_declarations
         self.p_create_method = 0.1
+        self.p_call_method = 0.9
+        self.p_change_method = 0.9
+        self.p_delete_method = 0.1
         self.p_create_class = 0.1
         self.p_no_inherit = 0.1
         self.code_modifier = CodeModifier()
@@ -29,13 +32,12 @@ class Evolver:
             self.inheritance_graph.add_node(c.name, {'class': c})
             for m in c.body:
                 if isinstance(m, MethodDeclaration):
-                    self.reference_graph.add_node(m.name, {'method': m, 'class': c})
+                    self.reference_graph.add_node(m.name, {'method': m, 'class': c, 'fitness': random()})
 
     def step(self):
-        if random() < self.p_create_method:
-            self.create_method()
-        else:
-            self.call_method()
+        action = sample([self.create_method, self.call_method, self.change_method, self.delete_method],
+               [self.p_create_method, self.p_call_method, self.p_change_method, self.p_delete_method])
+        action()
 
     def create_method(self):
         klass = None
@@ -49,7 +51,7 @@ class Evolver:
                 sizes.append(len(data['class'].body))
             klass = sample(classes, sizes)
         method = self.code_modifier.create_method(klass)
-        self.reference_graph.add_node(method.name, {'method': method, 'class': klass})
+        self.reference_graph.add_node(method.name, {'method': method, 'class': klass, 'fitness': random()})
         return method
 
     def call_method(self):
@@ -64,9 +66,18 @@ class Evolver:
 
         caller_info = sample(methods, sizes)
         callee_info = sample(methods, in_degrees)
-        caller_info['method'].body.append(
-            MethodInvocation(callee_info['method'].name, target=Name(callee_info['class'].name)))
+        self.code_modifier.create_reference(
+            caller_info['method'], callee_info['method'], callee_info['class'])
+        # does this make the system too unstable?
+        caller_info['fitness'] = random()
         self.reference_graph.add_edge(caller_info['method'].name, callee_info['method'].name)
+
+    def change_method(self):
+        method = self.choose_unfit_method()
+
+
+    def delete_method(self):
+        pass
 
     def create_class(self):
         superclass_name = None
@@ -83,3 +94,17 @@ class Evolver:
         if superclass_name:
             self.inheritance_graph.add_edge(klass.name, superclass_name)
         return klass
+
+    def choose_unfit_method(self):
+        """
+        :return: the method with least fitness number. Can change to a probabilistic function that biases towards
+        less fit methods
+        """
+        min_fitness = 1
+        unfit_method = None
+        for method, data in self.reference_graph.nodes_iter(True):
+            if data['fitness'] < min_fitness:
+                min_fitness = data['fitness']
+                unfit_method = method
+        return unfit_method
+

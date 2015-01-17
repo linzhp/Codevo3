@@ -3,7 +3,7 @@ import csv
 
 if __name__ == '__main__':
     evolver = Evolver()
-    for i in range(50000):
+    for i in range(10000):
         evolver.step()
 
     with open('references.csv', 'w') as ref_file:

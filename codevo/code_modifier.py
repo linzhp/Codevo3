@@ -26,7 +26,7 @@ class CodeModifier:
         return klass
 
     def create_reference(self, from_method, to_method, target):
-        ref = MethodInvocation(to_method, target=target)
+        ref = MethodInvocation(to_method.name, target=Name(target.name))
         from_method.body.append(ref)
         return ref
 
@@ -40,4 +40,19 @@ class CodeModifier:
         for stmt in to_delete:
             from_method.body.remove(stmt)
 
-
+    def create_statement(self):
+        """
+        Generate a statement. May use a fuzzer to generate a variety of statements
+        :return:
+        """
+        var = VariableDeclaration(
+            type='int',
+            variable_declarators=[VariableDeclarator(
+                variable=Variable(
+                    name='var' + str(self.counter)
+                ),
+                initializer=Literal(self.counter)
+            )]
+        )
+        self.counter += 1
+        return var

@@ -64,7 +64,7 @@ class JavaPrinter(Visitor):
         return False
 
     def visit_Literal(self, literal):
-        self.result += literal.value
+        self.result += str(literal.value)
         return False
 
     def visit_Variable(self, variable):
