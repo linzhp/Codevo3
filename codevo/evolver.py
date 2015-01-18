@@ -18,12 +18,8 @@ class Evolver:
                 parser = Parser()
                 tree = parser.parse_file(java_file)
                 initial_classes = tree.type_declarations
-        self.p_create_method = 0.1
-        self.p_call_method = 0.9
-        self.p_change_method = 0.9
-        self.p_delete_method = 0.1
         self.p_create_class = 0.1
-        self.p_no_inherit = 0.1
+        self.p_no_inherit = 0.2
         self.code_modifier = CodeModifier()
         self.inheritance_graph = DiGraph()
         self.reference_graph = DiGraph()
@@ -35,8 +31,15 @@ class Evolver:
                     self.reference_graph.add_node(m.name, {'method': m, 'class': c, 'fitness': random()})
 
     def step(self):
-        action = sample([self.create_method, self.call_method, self.change_method, self.delete_method],
-               [self.p_create_method, self.p_call_method, self.p_change_method, self.p_delete_method])
+        # Growth rate adapted from Turski (2002)
+        number_of_modules = self.inheritance_graph.number_of_nodes()
+        complexity = 1 if number_of_modules == 1 else number_of_modules * (number_of_modules - 1) / 2
+        p_create_method = 2 / (complexity + 1)
+        p_call_method = 1 - p_create_method
+        p_delete_method = 1 / (complexity + 1)
+        p_update_method = 1 - p_delete_method
+        action = sample([self.create_method, self.call_method, self.update_method, self.delete_method],
+                        [p_create_method, p_call_method, p_update_method, p_delete_method])
         action()
 
     def create_method(self):
@@ -68,16 +71,37 @@ class Evolver:
         callee_info = sample(methods, in_degrees)
         self.code_modifier.create_reference(
             caller_info['method'], callee_info['method'], callee_info['class'])
-        # does this make the system too unstable?
+        # The will introduce some instability when the probability of creating and deleting methods drops to near 0
         caller_info['fitness'] = random()
         self.reference_graph.add_edge(caller_info['method'].name, callee_info['method'].name)
 
-    def change_method(self):
+    def update_method(self):
         method = self.choose_unfit_method()
+        method_info = self.reference_graph.node[method]
+        self.code_modifier.add_statement(method_info['method'])
+        method_info['fitness'] = random()
 
-
-    def delete_method(self):
-        pass
+    def delete_method(self, method=None):
+        if method is None:
+            method = self.choose_unfit_method()
+        method_info = self.reference_graph.node[method]
+        class_node = method_info['class']
+        void_callers = []
+        for caller in self.reference_graph.predecessors_iter(method):
+            caller_info = self.reference_graph.node[caller]
+            caller_node = caller_info['method']
+            self.code_modifier.delete_reference(caller_node, method_info['method'], class_node)
+            if len(caller_node.body) == 0:
+                void_callers.append(caller)
+            else:
+                caller_info['fitness'] = random()
+        self.code_modifier.delete_method(class_node, method_info['method'])
+        self.reference_graph.remove_node(method)
+        if len(class_node.body) == 0:
+            self.inheritance_graph.remove_node(class_node.name)
+        # recursively remove all void callers
+        for caller in void_callers:
+            self.delete_method(caller)
 
     def create_class(self):
         superclass_name = None

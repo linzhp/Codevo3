@@ -1,5 +1,6 @@
 from plyj.model import *
 
+
 class CodeModifier:
     def __init__(self):
         self.counter = 0
@@ -31,14 +32,15 @@ class CodeModifier:
         return ref
 
     def delete_reference(self, from_method, to_method, target):
-        to_delete = []
-        for stmt in from_method.body:
-            if isinstance(stmt, MethodInvocation) and \
-                    stmt.name == to_method.name:
-                to_delete.append(stmt)
-
+        to_delete = [stmt for stmt in from_method.body
+                     if isinstance(stmt, MethodInvocation) and
+                     stmt.name == to_method.name and stmt.target.value == target.name]
         for stmt in to_delete:
             from_method.body.remove(stmt)
+
+    def add_statement(self, method):
+        stmt = self.create_statement()
+        method.body.append(stmt)
 
     def create_statement(self):
         """
