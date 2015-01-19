@@ -32,17 +32,18 @@ class Evolver:
 
     def step(self):
         # Growth rate adapted from Turski (2002)
-        number_of_modules = self.inheritance_graph.number_of_nodes()
-        complexity = 1 if number_of_modules == 1 else number_of_modules * (number_of_modules - 1) / 2
-        p_create_method = 2 / (complexity + 1)
+        num_of_refs = self.reference_graph.number_of_edges()
+        p_create_method = 0.9 / (num_of_refs + 1)
         p_call_method = 1 - p_create_method
-        p_delete_method = 1 / (complexity + 1)
+        p_delete_method = 0.1 / (num_of_refs + 1)
         p_update_method = 1 - p_delete_method
         action = sample([self.create_method, self.call_method, self.update_method, self.delete_method],
                         [p_create_method, p_call_method, p_update_method, p_delete_method])
         action()
+        print('number of methods: %d' % self.reference_graph.number_of_nodes())
 
     def create_method(self):
+        print('creating a method')
         klass = None
         if random() < self.p_create_class:
             klass = self.create_class()
@@ -52,12 +53,13 @@ class Evolver:
             for node, data in self.inheritance_graph.nodes_iter(data=True):
                 classes.append(data['class'])
                 sizes.append(len(data['class'].body))
-            klass = sample(classes, sizes)
+            klass = sample(classes, [s + 1 for s in sizes])
         method = self.code_modifier.create_method(klass)
         self.reference_graph.add_node(method.name, {'method': method, 'class': klass, 'fitness': random()})
         return method
 
     def call_method(self):
+        print('calling a method')
         methods = []
         sizes = []
         in_degrees = []
@@ -67,8 +69,8 @@ class Evolver:
             methods.append(data)
             sizes.append(len(data['method'].body))
 
-        caller_info = sample(methods, sizes)
-        callee_info = sample(methods, in_degrees)
+        caller_info = sample(methods, [s + 1 for s in sizes])
+        callee_info = sample(methods, [d + 1 for d in in_degrees])
         self.code_modifier.create_reference(
             caller_info['method'], callee_info['method'], callee_info['class'])
         # The will introduce some instability when the probability of creating and deleting methods drops to near 0
@@ -76,25 +78,31 @@ class Evolver:
         self.reference_graph.add_edge(caller_info['method'].name, callee_info['method'].name)
 
     def update_method(self):
+        print('updating a method')
         method = self.choose_unfit_method()
         method_info = self.reference_graph.node[method]
         self.code_modifier.add_statement(method_info['method'])
         method_info['fitness'] = random()
 
     def delete_method(self, method=None):
+        print('deleting a method')
+        if self.reference_graph.number_of_nodes() == 1:
+            # Don't delete the last method
+            return
         if method is None:
             method = self.choose_unfit_method()
         method_info = self.reference_graph.node[method]
         class_node = method_info['class']
         void_callers = []
         for caller in self.reference_graph.predecessors_iter(method):
-            caller_info = self.reference_graph.node[caller]
-            caller_node = caller_info['method']
-            self.code_modifier.delete_reference(caller_node, method_info['method'], class_node)
-            if len(caller_node.body) == 0:
-                void_callers.append(caller)
-            else:
-                caller_info['fitness'] = random()
+            if (caller != method):
+                caller_info = self.reference_graph.node[caller]
+                caller_node = caller_info['method']
+                self.code_modifier.delete_reference(caller_node, method_info['method'], class_node)
+                if len(caller_node.body) == 0:
+                    void_callers.append(caller)
+                else:
+                    caller_info['fitness'] = random()
         self.code_modifier.delete_method(class_node, method_info['method'])
         self.reference_graph.remove_node(method)
         if len(class_node.body) == 0:
@@ -112,7 +120,7 @@ class Evolver:
                 class_names.append(node)
                 num_subclasses.append(in_degree)
 
-            superclass_name = sample(class_names, num_subclasses)
+            superclass_name = sample(class_names, [n + 1 for n in num_subclasses])
         klass = self.code_modifier.create_class(superclass_name)
         self.inheritance_graph.add_node(klass.name, {'class': klass})
         if superclass_name:
@@ -122,7 +130,7 @@ class Evolver:
     def choose_unfit_method(self):
         """
         :return: the method with least fitness number. Can change to a probabilistic function that biases towards
-        less fit methods
+        less fit methods if the current implementation makes the system too stable
         """
         min_fitness = 1
         unfit_method = None

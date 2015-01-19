@@ -4,5 +4,6 @@ import numpy as np
 from random import random
 
 def sample(values, weights):
-    bins = np.add.accumulate([w + 1 for w in weights])
-    return values[np.digitize([random() * bins[-1]], bins)]
+    bins = np.add.accumulate(weights)
+    selected_index = np.digitize([random() * bins[-1]], bins)
+    return values[selected_index]
