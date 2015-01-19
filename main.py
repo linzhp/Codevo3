@@ -4,7 +4,7 @@ import csv
 if __name__ == '__main__':
     evolver = Evolver()
     with open('fitness.txt', 'w') as fit_file:
-        for i in range(50000):
+        for i in range(10000):
             evolver.step()
             fitness = [str(data['fitness']) for node, data in evolver.reference_graph.nodes_iter(True)]
             fit_file.write(','.join(fitness) + '\n')

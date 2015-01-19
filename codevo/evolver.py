@@ -1,6 +1,6 @@
 from plyj.model import MethodDeclaration
 from plyj.parser import Parser
-from random import random
+from random import random, choice
 from codevo.utils import sample
 from codevo.code_modifier import CodeModifier
 from os import path
@@ -33,9 +33,9 @@ class Evolver:
     def step(self):
         # Growth rate adapted from Turski (2002)
         num_of_refs = self.reference_graph.number_of_edges()
-        p_create_method = 0.9 / (num_of_refs + 1)
+        p_create_method = 0.1
         p_call_method = 1 - p_create_method
-        p_delete_method = 0.1 / (num_of_refs + 1)
+        p_delete_method = 0 / (num_of_refs + 1)
         p_update_method = 1 - p_delete_method
         action = sample([self.create_method, self.call_method, self.update_method, self.delete_method],
                         [p_create_method, p_call_method, p_update_method, p_delete_method])
@@ -90,12 +90,12 @@ class Evolver:
             # Don't delete the last method
             return
         if method is None:
-            method = self.choose_unfit_method()
+            method = choice(self.reference_graph.nodes())
         method_info = self.reference_graph.node[method]
         class_node = method_info['class']
         void_callers = []
         for caller in self.reference_graph.predecessors_iter(method):
-            if (caller != method):
+            if caller != method:
                 caller_info = self.reference_graph.node[caller]
                 caller_node = caller_info['method']
                 self.code_modifier.delete_reference(caller_node, method_info['method'], class_node)
