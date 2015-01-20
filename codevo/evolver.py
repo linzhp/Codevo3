@@ -37,8 +37,9 @@ class Evolver:
         p_update_method = 1 - p_delete_method
         action = sample([self.create_method, self.call_method, self.update_method, self.delete_method],
                         [p_create_method, p_call_method, p_update_method, p_delete_method])
-        action()
+        change_size = action()
         print('number of methods: %d' % self.reference_graph.number_of_nodes())
+        return change_size
 
     def create_method(self):
         print('creating a method')
@@ -54,7 +55,7 @@ class Evolver:
             klass = sample(classes, [s + 1 for s in sizes])
         method = self.code_modifier.create_method(klass)
         self.reference_graph.add_node(method.name, {'method': method, 'class': klass, 'fitness': random()})
-        return method
+        return 1
 
     def call_method(self):
         print('calling a method')
@@ -74,6 +75,7 @@ class Evolver:
         # The will introduce some instability when the probability of creating and deleting methods drops to near 0
         caller_info['fitness'] = random()
         self.reference_graph.add_edge(caller_info['method'].name, callee_info['method'].name)
+        return 1
 
     def update_method(self):
         print('updating a method')
@@ -81,12 +83,20 @@ class Evolver:
         method_info = self.reference_graph.node[method]
         self.code_modifier.add_statement(method_info['method'])
         method_info['fitness'] = random()
+        return 1
 
     def delete_method(self, method=None):
+        """
+        Delete a method and delete the method call from its callers. It a caller becomes
+        empty after deleting the method, delete the caller as well and the deletion propagates
+        :param method: The method to be deleted. If None, randomly choose one
+        :return: The number of changes made
+        """
         print('deleting a method')
+        change_size = 0
         if self.reference_graph.number_of_nodes() == 1:
             # Don't delete the last method
-            return
+            return 0
         if method is None:
             method = choice(self.reference_graph.nodes())
         method_info = self.reference_graph.node[method]
@@ -101,13 +111,16 @@ class Evolver:
                     void_callers.append(caller)
                 else:
                     caller_info['fitness'] = random()
+                    change_size += 1
         self.code_modifier.delete_method(class_node, method_info['method'])
+        change_size += 1
         self.reference_graph.remove_node(method)
         if len(class_node.body) == 0:
             self.inheritance_graph.remove_node(class_node.name)
         # recursively remove all void callers
         for caller in void_callers:
-            self.delete_method(caller)
+            change_size += self.delete_method(caller)
+        return change_size
 
     def create_class(self):
         superclass_name = None

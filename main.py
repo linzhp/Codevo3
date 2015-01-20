@@ -3,9 +3,10 @@ import csv
 
 if __name__ == '__main__':
     evolver = Evolver()
-    with open('fitness.txt', 'w') as fit_file:
+    with open('fitness.txt', 'w') as fit_file, open('change_size.txt', 'w') as size_file:
         for i in range(100000):
-            evolver.step()
+            print('Step %d' % i)
+            size_file.write('%d\n' % evolver.step())
             fitness = [str(data['fitness']) for node, data in evolver.reference_graph.nodes_iter(True)]
             fit_file.write(','.join(fitness) + '\n')
 
