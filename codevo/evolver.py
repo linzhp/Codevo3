@@ -31,11 +31,9 @@ class Evolver:
                     self.reference_graph.add_node(m.name, {'method': m, 'class': c, 'fitness': random()})
 
     def step(self):
-        # Growth rate adapted from Turski (2002)
-        num_of_refs = self.reference_graph.number_of_edges()
-        p_create_method = 0.1
+        p_create_method = 0.2
         p_call_method = 1 - p_create_method
-        p_delete_method = 0 / (num_of_refs + 1)
+        p_delete_method = 0.1
         p_update_method = 1 - p_delete_method
         action = sample([self.create_method, self.call_method, self.update_method, self.delete_method],
                         [p_create_method, p_call_method, p_update_method, p_delete_method])
