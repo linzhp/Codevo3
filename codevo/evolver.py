@@ -35,9 +35,11 @@ class Evolver:
         p_call_method = 1 - p_create_method
         p_delete_method = 0.1
         p_update_method = 1 - p_delete_method
-        action = sample([self.create_method, self.call_method, self.update_method, self.delete_method],
-                        [p_create_method, p_call_method, p_update_method, p_delete_method])
-        change_size = action()
+        change_size = 0
+        while change_size == 0:
+            action = sample([self.create_method, self.call_method, self.update_method, self.delete_method],
+                            [p_create_method, p_call_method, p_update_method, p_delete_method])
+            change_size = action()
         print('number of methods: %d' % self.reference_graph.number_of_nodes())
         return change_size
 
@@ -99,6 +101,7 @@ class Evolver:
             return 0
         if method is None:
             method = choice(self.reference_graph.nodes())
+            # method = self.choose_unfit_method()
         method_info = self.reference_graph.node[method]
         class_node = method_info['class']
         void_callers = []

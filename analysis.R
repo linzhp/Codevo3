@@ -28,7 +28,7 @@ get_change_sizes <- function(f0, min_fitness) {
       }
     } else {
       for (j in 1:equilibriums[i]) {
-        size <- size + change_sizes[j]
+        size <- size + step_size[j]
       }      
     }
     change_sizes <- c(change_sizes, size)
