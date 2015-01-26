@@ -100,8 +100,8 @@ class Evolver:
             # Don't delete the last method
             return 0
         if method is None:
-            method = choice(self.reference_graph.nodes())
-            # method = self.choose_unfit_method()
+            # method = choice(self.reference_graph.nodes())
+            method = self.choose_unfit_method()
         method_info = self.reference_graph.node[method]
         class_node = method_info['class']
         void_callers = []
