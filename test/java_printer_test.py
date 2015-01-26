@@ -1,6 +1,6 @@
 from unittest import TestCase
 from plyj.parser import Parser
-from codevo.java_printer import JavaPrinter
+from codevo import JavaPrinter
 
 
 class JavaPrinterTest(TestCase):
@@ -25,6 +25,21 @@ public class Foo extends Bar {
 public class Foo {
     static void bar() {
         double d = Math.random();
+    }
+}
+        '''.strip(), printer.result)
+
+    def test_print_statement(self):
+        parser = Parser()
+        tree = parser.parse_string('''public class Foo{
+                                        static void bar() { Math.random(); }
+                                    }''')
+        printer = JavaPrinter()
+        tree.accept(printer)
+        self.assertEqual('''
+public class Foo {
+    static void bar() {
+        Math.random();
     }
 }
         '''.strip(), printer.result)

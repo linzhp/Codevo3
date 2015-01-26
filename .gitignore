@@ -1,3 +1,4 @@
+output/*
 .idea
 *.pyc
 lextab.py

@@ -69,13 +69,23 @@ class JavaPrinter(Visitor):
 
     def visit_Variable(self, variable):
         self.result += variable.name
+        return False
 
     def visit_Name(self, name):
         self.result += name.value
+        return False
 
     def visit_MethodInvocation(self, method):
         method.target.accept(self)
         self.result += '.' + method.name + '()'
+        return False
 
     def visit_Type(self, type):
         type.name.accept(self)
+        return False
+
+    def visit_ExpressionStatement(self, stmt):
+        self.result += '    ' * self.indent
+        stmt.expression.accept(self)
+        self.result += ';\n'
+        return False

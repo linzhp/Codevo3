@@ -28,13 +28,15 @@ class CodeModifier:
 
     def create_reference(self, from_method, to_method, target):
         ref = MethodInvocation(to_method.name, target=Name(target.name))
-        from_method.body.append(ref)
+        from_method.body.append(ExpressionStatement(ref))
         return ref
 
     def delete_reference(self, from_method, to_method, target):
         to_delete = [stmt for stmt in from_method.body
-                     if isinstance(stmt, MethodInvocation) and
-                     stmt.name == to_method.name and stmt.target.value == target.name]
+                     if isinstance(stmt, ExpressionStatement) and
+                        isinstance(stmt.expression, MethodInvocation) and
+                        stmt.expression.name == to_method.name and
+                        stmt.expression.target.value == target.name]
         for stmt in to_delete:
             from_method.body.remove(stmt)
 
