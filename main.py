@@ -7,8 +7,7 @@ if __name__ == '__main__':
         for root, dirs, files in os.walk('output'):
             for name in files:
                 os.remove(os.path.join(root, name))
-    else:
-        os.makedirs('output')
+    os.makedirs('output/src', exist_ok=True)
     evolver = Evolver()
     with open('output/fitness.txt', 'w') as fit_file, open('output/change_size.txt', 'w') as size_file:
         for i in range(100000):
@@ -27,13 +26,15 @@ if __name__ == '__main__':
                 'ref_count': in_degree
             })
 
-    with open('output/subclasses.csv', 'w') as sub_file:
-        writer = csv.DictWriter(sub_file, ['class', 'subclasses'])
+    with open('output/classes.csv', 'w') as sub_file:
+        writer = csv.DictWriter(sub_file, ['class', 'subclasses', 'lines'])
         writer.writeheader()
         for class_name, in_degree in evolver.inheritance_graph.in_degree_iter():
-            writer.writerow({'class': class_name, 'subclasses': in_degree})
             klass = evolver.inheritance_graph.node[class_name]['class']
             java_printer = JavaPrinter()
             klass.accept(java_printer)
-            with open('output/src' + class_name + '.java', 'w') as java_file:
+            writer.writerow({'class': class_name,
+                             'subclasses': in_degree,
+                             'lines': java_printer.result.count('\n') + 1})
+            with open(os.path.join('output/src', class_name + '.java'), 'w') as java_file:
                 java_file.write(java_printer.result)
