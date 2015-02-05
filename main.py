@@ -1,6 +1,7 @@
 from codevo import Evolver, JavaPrinter
 import csv
 import os
+import sys
 
 if __name__ == '__main__':
     if os.path.exists('output'):
@@ -9,12 +10,14 @@ if __name__ == '__main__':
                 os.remove(os.path.join(root, name))
     os.makedirs('output/src', exist_ok=True)
     evolver = Evolver()
-    with open('output/fitness.txt', 'w') as fit_file, open('output/change_size.txt', 'w') as size_file:
-        for i in range(100000):
+    with open('output/steps.csv', 'w') as steps_file:
+        writer = csv.DictWriter(steps_file, ['min_fitness', 'change_size'])
+        writer.writeheader()
+        for i in range(int(sys.argv[1])):
             print('Step %d' % i)
-            size_file.write('%d\n' % evolver.step())
-            fitness = [str(data['fitness']) for node, data in evolver.reference_graph.nodes_iter(True)]
-            fit_file.write(','.join(fitness) + '\n')
+            change_size = evolver.step()
+            min_fitness = min([data['fitness'] for node, data in evolver.reference_graph.nodes_iter(True)])
+            writer.writerow({'min_fitness': min_fitness, 'change_size': change_size})
 
     with open('output/references.csv', 'w') as ref_file:
         writer = csv.DictWriter(ref_file, ['method', 'class', 'ref_count'])
