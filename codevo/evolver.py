@@ -5,6 +5,7 @@ from codevo.utils import sample
 from codevo.code_modifier import CodeModifier
 from os import path
 from networkx import DiGraph
+import logging
 
 
 class Evolver:
@@ -28,7 +29,12 @@ class Evolver:
             self.inheritance_graph.add_node(c.name, {'class': c})
             for m in c.body:
                 if isinstance(m, MethodDeclaration):
-                    self.reference_graph.add_node(m.name, {'method': m, 'class': c, 'fitness': random()})
+                    self.reference_graph.add_node(m.name,
+                                                  {'method': m,
+                                                   'class': c,
+                                                   'fitness': random(),
+                                                   'size': 1
+                                                  })
 
     def step(self):
         p_create_method = 0.2
@@ -40,11 +46,11 @@ class Evolver:
             action = sample([self.create_method, self.call_method, self.update_method, self.delete_method],
                             [p_create_method, p_call_method, p_update_method, p_delete_method])
             change_size = action()
-        print('number of methods: %d' % self.reference_graph.number_of_nodes())
+        logging.info('number of methods: %d' % self.reference_graph.number_of_nodes())
         return change_size
 
     def create_method(self):
-        print('creating a method')
+        logging.info('creating a method')
         klass = None
         if random() < self.p_create_class:
             klass = self.create_class()
@@ -52,29 +58,37 @@ class Evolver:
             classes = [data['class'] for node, data in self.inheritance_graph.nodes_iter(data=True)]
             klass = sample(classes, [len(c.body) + 1 for c in classes])
         method = self.code_modifier.create_method(klass)
-        self.reference_graph.add_node(method.name, {'method': method, 'class': klass, 'fitness': random()})
+        self.reference_graph.add_node(method.name,
+                                      {'method': method,
+                                       'class': klass,
+                                       'fitness': random(),
+                                       'size': 1
+                                      }
+        )
         return 1
 
     def call_method(self):
-        print('calling a method')
+        logging.info('calling a method')
         method_info = [(self.reference_graph.node[node], in_degree)
                        for node, in_degree in self.reference_graph.in_degree_iter()]
         methods = [mi[0] for mi in method_info]
         caller_info = sample(methods,
-                             [len(mi[0]['method'].body) + 1 for mi in method_info])
+                             [m['size'] for m in methods])
         callee_info = sample(methods, [mi[1] + 1 for mi in method_info])
         self.code_modifier.create_reference(
             caller_info['method'], callee_info['method'], callee_info['class'])
         # The will introduce some instability when the probability of creating and deleting methods drops to near 0
         caller_info['fitness'] = random()
+        callee_info['size'] += 1
         self.reference_graph.add_edge(caller_info['method'].name, callee_info['method'].name)
         return 1
 
     def update_method(self):
-        print('updating a method')
+        logging.info('updating a method')
         method = self.choose_unfit_method()
         method_info = self.reference_graph.node[method]
         self.code_modifier.add_statement(method_info['method'])
+        method_info['size'] += 1
         method_info['fitness'] = random()
         return 1
 
@@ -85,7 +99,7 @@ class Evolver:
         :param method: The method to be deleted. If None, randomly choose one
         :return: The number of changes made
         """
-        print('deleting a method')
+        logging.info('deleting a method')
         change_size = 0
         if self.reference_graph.number_of_nodes() == 1:
             # Don't delete the last method
@@ -104,6 +118,7 @@ class Evolver:
                 if len(caller_node.body) == 0:
                     void_callers.append(caller)
                 else:
+                    caller_info['size'] = len(caller_node.body) + 1
                     caller_info['fitness'] = random()
                     change_size += 1
         self.code_modifier.delete_method(class_node, method_info['method'])

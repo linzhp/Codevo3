@@ -2,6 +2,7 @@ from codevo import Evolver, JavaPrinter
 import csv
 import os
 import sys
+import logging
 
 if __name__ == '__main__':
     if os.path.exists('output'):
@@ -15,7 +16,7 @@ if __name__ == '__main__':
         writer = csv.DictWriter(steps_file, ['min_fitness', 'change_size'])
         writer.writeheader()
         for i in range(int(sys.argv[1])):
-            print('Step %d' % i)
+            logging.info('Step %d' % i)
             change_size = evolver.step()
             min_fitness = min([data['fitness'] for node, data in evolver.reference_graph.nodes_iter(True)])
             writer.writerow({'min_fitness': min_fitness, 'change_size': change_size})
