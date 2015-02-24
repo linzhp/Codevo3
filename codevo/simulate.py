@@ -8,7 +8,8 @@ if __name__ == '__main__':
         for root, dirs, files in os.walk('output'):
             for name in files:
                 os.remove(os.path.join(root, name))
-    os.makedirs('output/src', exist_ok=True)
+    else:
+        os.makedirs('output')
     evolver = Evolver()
     with open('output/steps.csv', 'w') as steps_file:
         writer = csv.DictWriter(steps_file, ['min_fitness', 'change_size'])
