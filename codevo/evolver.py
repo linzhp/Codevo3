@@ -75,9 +75,9 @@ class Evolver:
     def call_method(self):
         logging.info('calling a method')
         caller_info = sample([(data, data['size'])
-                              for node, data in self.reference_graph.nodes_iter(True)])
-        callee_info = sample([(self.reference_graph.node[method_name], in_degree + 1)
-                              for method_name, in_degree in self.reference_graph.in_degree_iter()])
+                              for data in self.reference_graph.node.values()])
+        callee_info = sample([(self.reference_graph.node[method_name], len(self.reference_graph.pred[method_name]) + 1)
+                              for method_name in self.reference_graph.node])
         self.code_modifier.create_reference(
             caller_info['method'], callee_info['method'], callee_info['class'])
         # The will introduce some instability when the probability of creating and deleting methods drops to near 0

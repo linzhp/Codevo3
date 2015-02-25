@@ -18,7 +18,7 @@ if __name__ == '__main__':
         for i in range(int(sys.argv[1])):
             logging.info('Step %d' % i)
             change_size = evolver.step()
-            min_fitness = min([data['fitness'] for node, data in evolver.reference_graph.nodes_iter(True)])
+            min_fitness = min([data['fitness'] for data in evolver.reference_graph.node.values()])
             writer.writerow({'min_fitness': min_fitness, 'change_size': change_size})
 
     with open('output/references.csv', 'w') as ref_file:
