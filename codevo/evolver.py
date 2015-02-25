@@ -43,8 +43,12 @@ class Evolver:
         p_update_method = 1 - p_delete_method
         change_size = 0
         while change_size == 0:
-            action = sample([self.create_method, self.call_method, self.update_method, self.delete_method],
-                            [p_create_method, p_call_method, p_update_method, p_delete_method])
+            action = sample([
+                (self.create_method, p_create_method),
+                (self.call_method, p_call_method),
+                (self.update_method, p_update_method),
+                (self.delete_method, p_delete_method)
+            ])
             change_size = action()
         logging.info('number of methods: %d' % self.reference_graph.number_of_nodes())
         return change_size
@@ -55,8 +59,9 @@ class Evolver:
         if random() < self.p_create_class:
             klass = self.create_class()
         else:
-            classes = [data['class'] for node, data in self.inheritance_graph.nodes_iter(data=True)]
-            klass = sample(classes, [len(c.body) + 1 for c in classes])
+            classes = [(data['class'], len(data['class'].body) + 1)
+                       for node, data in self.inheritance_graph.nodes_iter(data=True)]
+            klass = sample(classes)
         method = self.code_modifier.create_method(klass)
         self.reference_graph.add_node(method.name,
                                       {'method': method,
@@ -69,12 +74,10 @@ class Evolver:
 
     def call_method(self):
         logging.info('calling a method')
-        method_info = [(self.reference_graph.node[node], in_degree)
-                       for node, in_degree in self.reference_graph.in_degree_iter()]
-        methods = [mi[0] for mi in method_info]
-        caller_info = sample(methods,
-                             [m['size'] for m in methods])
-        callee_info = sample(methods, [mi[1] + 1 for mi in method_info])
+        caller_info = sample([(data, data['size'])
+                              for node, data in self.reference_graph.nodes_iter(True)])
+        callee_info = sample([(self.reference_graph.node[method_name], in_degree + 1)
+                              for method_name, in_degree in self.reference_graph.in_degree_iter()])
         self.code_modifier.create_reference(
             caller_info['method'], callee_info['method'], callee_info['class'])
         # The will introduce some instability when the probability of creating and deleting methods drops to near 0
@@ -134,9 +137,8 @@ class Evolver:
     def create_class(self):
         superclass_name = None
         if random() > self.p_no_inherit:
-            class_info = [(node, in_degree) for node, in_degree in self.inheritance_graph.in_degree_iter()]
-            class_names = [ci[0] for ci in class_info]
-            superclass_name = sample(class_names, [ci[1] + 1 for ci in class_info])
+            class_info = [(node, in_degree + 1) for node, in_degree in self.inheritance_graph.in_degree_iter()]
+            superclass_name = sample(class_info)
         klass = self.code_modifier.create_class(superclass_name)
         self.inheritance_graph.add_node(klass.name, {'class': klass})
         if superclass_name:
