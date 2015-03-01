@@ -2,12 +2,12 @@
 This is the codebase I use for my research on simulating software evolution.
 
 ## MSR 2015
-If you are interested in replicating the experiments in my MSR 2015 paper, please check out the release `MSR 2015`.
+If you are interested in replicating the experiments in my MSR 2015 paper, please check out the release [MSR 2015](https://github.com/linzhp/Codevo3/releases/tag/MSR2015).
 
 ## Dependencies
 * Python 3
 * [NetworkX](https://networkx.github.io/)
-* [plyj](https://github.com/linzhp/plyj), which depends on [ply](http://www.dabeaz.com/ply/)
+* [plyj](https://github.com/musiKk/plyj), which depends on [ply](http://www.dabeaz.com/ply/)
 
 ## Running the simulation
 Type the following command:
