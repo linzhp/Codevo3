@@ -82,7 +82,7 @@ class Evolver:
             caller_info['method'], callee_info['method'], callee_info['class'])
         # The will introduce some instability when the probability of creating and deleting methods drops to near 0
         caller_info['fitness'] = random()
-        callee_info['size'] += 1
+        caller_info['size'] += 1
         self.reference_graph.add_edge(caller_info['method'].name, callee_info['method'].name)
         return 1
 

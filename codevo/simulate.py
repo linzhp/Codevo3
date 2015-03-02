@@ -12,7 +12,7 @@ if __name__ == '__main__':
     else:
         os.makedirs('output')
     evolver = Evolver()
-    with open('output/steps.csv', 'w') as steps_file:
+    with open('output/steps.csv', 'w', newline='') as steps_file:
         writer = csv.DictWriter(steps_file, ['min_fitness', 'change_size'])
         writer.writeheader()
         for i in range(int(sys.argv[1])):
@@ -21,7 +21,7 @@ if __name__ == '__main__':
             min_fitness = min([data['fitness'] for data in evolver.reference_graph.node.values()])
             writer.writerow({'min_fitness': min_fitness, 'change_size': change_size})
 
-    with open('output/references.csv', 'w') as ref_file:
+    with open('output/references.csv', 'w', newline='') as ref_file:
         writer = csv.DictWriter(ref_file, ['method', 'class', 'ref_count'])
         writer.writeheader()
         for method_name, in_degree in evolver.reference_graph.in_degree_iter():
@@ -31,7 +31,7 @@ if __name__ == '__main__':
                 'ref_count': in_degree
             })
 
-    with open('output/classes.csv', 'w') as sub_file:
+    with open('output/classes.csv', 'w', newline='') as sub_file:
         writer = csv.DictWriter(sub_file, ['class', 'subclasses', 'lines'])
         writer.writeheader()
         for class_name, in_degree in evolver.inheritance_graph.in_degree_iter():
