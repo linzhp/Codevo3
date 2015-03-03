@@ -3,6 +3,8 @@ import csv
 import os
 import sys
 import logging
+from networkx.readwrite import json_graph
+import json
 
 if __name__ == '__main__':
     if os.path.exists('output'):
@@ -43,3 +45,7 @@ if __name__ == '__main__':
                              'lines': java_printer.result.count('\n') + 1})
             # with open(os.path.join('output/src', class_name + '.java'), 'w') as java_file:
             #     java_file.write(java_printer.result)
+
+    with open('output/references.json', 'w') as ref_file:
+        data = json_graph.node_link_data(evolver.reference_graph)
+        json.dump(data, ref_file, skipkeys=True, default=lambda d: None)
