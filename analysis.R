@@ -34,24 +34,23 @@ get_change_sizes <- function(f0, min_fitness, step_size_file) {
   change_sizes
 }
 
-get_commit_sizes <- function(steps_dt, f0, min_commit_size=1) {
-  i <- 1
+get_commit_sizes <- function(steps_dt, f0, mean_min_size=0) {
   commit_sizes <- vector('integer')
   num_steps <- nrow(steps_dt)
+  min_commit_size <- rlnorm(1, meanlog=mean_min_size)
   size <- 0
   for (s in 1:num_steps) {
-    if (steps_dt[s, min_fitness] >= f0) {
-      while (i <= s) {
-        size <- size + steps_dt[i, change_size]
-        i <- i + 1
-      }
-      if (size >= min_commit_size) {
-        commit_sizes <- c(commit_sizes, size)
-        size <- 0        
-      }
+    size <- size + steps_dt[s, change_size]
+    if (steps_dt[s, min_fitness] >= f0 & size >= min_commit_size) {
+      commit_sizes <- c(commit_sizes, size)
+      min_commit_size <- rlnorm(1, mean_min_size)
+      size <- 0        
     }
   }
-  c(commit_sizes, size + sum(steps_dt[i:num_steps, change_size]))
+  if (size > 0)
+    c(commit_sizes, size)
+  else
+    commit_size
 }
 
 ggplot.ccdf <- function(data, xlab='x', ylab='CCDF', xbreaks=NULL, ybreaks=NULL) {
