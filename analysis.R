@@ -34,16 +34,17 @@ get_change_sizes <- function(f0, min_fitness, step_size_file) {
   change_sizes
 }
 
-get_commit_sizes <- function(steps_dt, f0, mean_min_size=0) {
+get_commit_sizes <- function(steps_dt, f0, mean_min_size=NULL) {
   commit_sizes <- vector('integer')
   num_steps <- nrow(steps_dt)
-  min_commit_size <- rlnorm(1, meanlog=mean_min_size)
+  min_commit_size <- if (is.null(mean_min_size)) 0 else rlnorm(1, meanlog=mean_min_size)
   size <- 0
   for (s in 1:num_steps) {
     size <- size + steps_dt[s, change_size]
     if (steps_dt[s, min_fitness] >= f0 & size >= min_commit_size) {
       commit_sizes <- c(commit_sizes, size)
-      min_commit_size <- rlnorm(1, mean_min_size)
+      if (!is.null(mean_min_size))
+        min_commit_size <- rlnorm(1, mean_min_size)
       size <- 0        
     }
   }
