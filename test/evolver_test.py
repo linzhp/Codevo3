@@ -7,18 +7,17 @@ from plyj.model import *
 class EvolverTest(TestCase):
     def test_step(self):
         evolver = codevo.Evolver()
-        evolver.create_method = Mock()
-        with patch.object(codevo.evolver, 'random', return_value=0):
-            evolver.step()
-            evolver.create_method.assert_called_once_with()
+        self.assertNotEqual(evolver.step(), 0)
 
     def test_create_method(self):
         evolver = codevo.Evolver()
+        new_method_name = 'method' + str(evolver.code_modifier.counter)
         with patch.object(codevo.evolver, 'random', return_value=1):
-            method = evolver.create_method()
-            self.assertIsInstance(method, MethodDeclaration)
-            self.assertIn(method.name, evolver.reference_graph)
-            self.assertEqual(evolver.reference_graph.in_degree(method.name), 0)
+            change_size = evolver.create_method()
+            self.assertEqual(change_size, 3)
+            self.assertIn(new_method_name, evolver.reference_graph)
+            self.assertEqual(evolver.reference_graph.in_degree(new_method_name), 1)
+            self.assertEqual(evolver.reference_graph.out_degree(new_method_name), 1)
 
     def test_call_method(self):
         evolver = codevo.Evolver()
@@ -27,7 +26,7 @@ class EvolverTest(TestCase):
         body_size = len(method.body)
         evolver.call_method()
         self.assertEqual(len(method.body), body_size + 1)
-        self.assertIsInstance(method.body[-1], MethodInvocation)
+        self.assertIsInstance(method.body[-1].expression, MethodInvocation)
         self.assertEqual(evolver.reference_graph.in_degree(method_name), 1)
 
     def test_create_class(self):

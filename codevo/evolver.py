@@ -1,4 +1,4 @@
-from plyj.model import MethodDeclaration
+from plyj.model import MethodDeclaration, MethodInvocation
 from plyj.parser import Parser
 from random import random
 from codevo.utils import sample
@@ -33,13 +33,13 @@ class Evolver:
                                                   {'method': m,
                                                    'class': c,
                                                    'fitness': random(),
-                                                   'size': 1
+                                                   'size': len(m.body)
                                                   })
 
     def step(self):
         p_create_method = 0.2
         p_call_method = 1 - p_create_method
-        p_delete_method = 0.1
+        p_delete_method = 0
         p_update_method = 1 - p_delete_method
         change_size = 0
         while change_size == 0:
@@ -63,6 +63,8 @@ class Evolver:
                        for node, data in self.inheritance_graph.nodes_iter(data=True)]
             klass = sample(classes)
         method = self.code_modifier.create_method(klass)
+        callee_info = self.choose_callee()
+        self.code_modifier.create_reference(method, callee_info['method'], callee_info['class'])
         self.reference_graph.add_node(method.name,
                                       {'method': method,
                                        'class': klass,
@@ -70,17 +72,22 @@ class Evolver:
                                        'size': 1
                                       }
         )
-        return 1
+        self.reference_graph.add_edge(method.name, callee_info['method'].name)
+        caller_name = self.choose_unfit_method()
+        caller_info = self.reference_graph.node[caller_name]
+        self.code_modifier.create_reference(caller_info['method'], method, klass)
+        caller_info['fitness'] = random()
+        caller_info['size'] += 1
+        self.reference_graph.add_edge(caller_name, method.name)
+        return 3
 
     def call_method(self):
         logging.info('calling a method')
         caller_info = sample([(data, data['size'])
                               for data in self.reference_graph.node.values()])
-        callee_info = sample([(self.reference_graph.node[method_name], len(self.reference_graph.pred[method_name]) + 1)
-                              for method_name in self.reference_graph.node])
+        callee_info = self.choose_callee()
         self.code_modifier.create_reference(
             caller_info['method'], callee_info['method'], callee_info['class'])
-        # The will introduce some instability when the probability of creating and deleting methods drops to near 0
         caller_info['fitness'] = random()
         caller_info['size'] += 1
         self.reference_graph.add_edge(caller_info['method'].name, callee_info['method'].name)
@@ -88,12 +95,21 @@ class Evolver:
 
     def update_method(self):
         logging.info('updating a method')
-        method = self.choose_unfit_method()
-        method_info = self.reference_graph.node[method]
-        self.code_modifier.add_statement(method_info['method'])
-        method_info['size'] += 1
-        method_info['fitness'] = random()
-        return 1
+        method_name = self.choose_unfit_method()
+        method_info = self.reference_graph.node[method_name]
+        if random() < 0.5:
+            self.code_modifier.add_statement(method_info['method'])
+            method_info['size'] += 1
+        else:
+            deleted_stmt = self.code_modifier.delete_statement(method_info['method'])
+            if isinstance(deleted_stmt, MethodInvocation):
+                self.reference_graph.remove_edge(method_name, deleted_stmt.name)
+            method_info['size'] -= 1
+        if method_info['size'] == 0:
+            return self.delete_method(method_name) + 1
+        else:
+            method_info['fitness'] = random()
+            return 1
 
     def delete_method(self, method=None):
         """
@@ -118,14 +134,14 @@ class Evolver:
                 caller_info = self.reference_graph.node[caller]
                 caller_node = caller_info['method']
                 self.code_modifier.delete_reference(caller_node, method_info['method'], class_node)
+                change_size += 1
                 if len(caller_node.body) == 0:
                     void_callers.append(caller)
                 else:
-                    caller_info['size'] = len(caller_node.body) + 1
+                    caller_info['size'] = len(caller_node.body)
                     caller_info['fitness'] = random()
-                    change_size += 1
         self.code_modifier.delete_method(class_node, method_info['method'])
-        change_size += 1
+        change_size += method_info['size']
         self.reference_graph.remove_node(method)
         if len(class_node.body) == 0:
             self.inheritance_graph.remove_node(class_node.name)
@@ -157,4 +173,8 @@ class Evolver:
                 min_fitness = data['fitness']
                 unfit_method = method
         return unfit_method
+
+    def choose_callee(self):
+        return sample([(self.reference_graph.node[method_name], len(self.reference_graph.pred[method_name]) + 1)
+                       for method_name in self.reference_graph.node])
 

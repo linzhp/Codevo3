@@ -44,6 +44,9 @@ class CodeModifier:
         stmt = self.create_statement()
         method.body.append(stmt)
 
+    def delete_statement(self, method):
+        return method.body.pop()
+
     def create_statement(self):
         """
         Generate a statement. May use a fuzzer to generate a variety of statements
