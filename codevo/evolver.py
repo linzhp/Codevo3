@@ -37,10 +37,10 @@ class Evolver:
                                                   })
 
     def step(self):
-        p_create_method = 0.2
-        p_call_method = 1 - p_create_method
+        p_create_method = 126214
+        p_call_method = 175060
         p_delete_method = 0
-        p_update_method = 1 - p_delete_method
+        p_update_method = 889339
         change_size = 0
         while change_size == 0:
             action = sample([
@@ -50,6 +50,8 @@ class Evolver:
                 (self.delete_method, p_delete_method)
             ])
             change_size = action()
+            if self.reference_graph.number_of_nodes() == 0:
+                logging.error(str(action) + ' has deleted all methods')
         logging.info('number of methods: %d' % self.reference_graph.number_of_nodes())
         return change_size
 
@@ -97,7 +99,7 @@ class Evolver:
         logging.info('updating a method')
         method_name = self.choose_unfit_method()
         method_info = self.reference_graph.node[method_name]
-        if random() < 0.5:
+        if random() < 0.67:
             self.code_modifier.add_statement(method_info['method'])
             method_info['size'] += 1
         else:
