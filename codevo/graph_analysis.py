@@ -12,10 +12,11 @@ if __name__ == '__main__':
         data = json.load(g_file)
         g = Graph(json_graph.node_link_graph(data))
     print('Number of nodes:', g.number_of_nodes())
-    print('Average degrees:', 2 * g.number_of_edges()/g.number_of_nodes())
+    print('Average degree:', 2 * g.number_of_edges()/g.number_of_nodes())
     print('Transitivity:', transitivity(g))
-    # Calculating average clustering coefficient for different degrees
     cc = clustering(g)
+    print('Average clustering coefficient:', np.mean(list(cc.values())))
+    # Calculating average clustering coefficient for different degrees
     degree_cc = {}
     for node, degree in g.degree_iter():
         if degree not in degree_cc:
