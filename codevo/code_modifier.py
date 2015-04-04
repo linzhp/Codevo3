@@ -26,12 +26,12 @@ class CodeModifier:
         self.counter += 1
         return klass
 
-    def create_reference(self, from_method, to_method, target):
+    def add_method_call(self, from_method, to_method, target):
         ref = MethodInvocation(to_method.name, target=Name(target.name))
         from_method.body.append(ExpressionStatement(ref))
         return ref
 
-    def delete_reference(self, from_method, to_method, target):
+    def delete_method_call(self, from_method, to_method, target):
         to_delete = [stmt for stmt in from_method.body
                      if isinstance(stmt, ExpressionStatement) and
                         isinstance(stmt.expression, MethodInvocation) and
