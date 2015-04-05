@@ -5,6 +5,8 @@ import sys
 import logging
 from networkx.readwrite import json_graph
 import json
+import random
+from time import time
 
 if __name__ == '__main__':
     if os.path.exists('output'):
@@ -13,6 +15,9 @@ if __name__ == '__main__':
                 os.remove(os.path.join(root, name))
     else:
         os.makedirs('output')
+    random_seed = round(time())
+    print('Using seed', random_seed)
+    random.seed(random_seed)
     evolver = Evolver()
     with open('output/steps.csv', 'w', newline='') as steps_file:
         writer = csv.DictWriter(steps_file, ['min_fitness', 'change_size'])
@@ -49,3 +54,7 @@ if __name__ == '__main__':
     with open('output/references.json', 'w') as ref_file:
         data = json_graph.node_link_data(evolver.reference_graph)
         json.dump(data, ref_file, skipkeys=True, default=lambda d: None)
+
+    with open('output/associations.json', 'w') as asso_file:
+        data = json_graph.node_link_data(evolver.build_class_association())
+        json.dump(data, asso_file, skipkeys=True)

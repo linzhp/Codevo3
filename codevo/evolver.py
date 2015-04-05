@@ -24,11 +24,9 @@ class Evolver:
         self.code_modifier = CodeModifier()
         self.inheritance_graph = DiGraph()
         self.reference_graph = DiGraph()
-        self.association_graph = Graph()
 
         for c in initial_classes:
             self.inheritance_graph.add_node(c.name, {'class': c})
-            self.association_graph.add_node(c.name, bipartite=0)
             for m in c.body:
                 if isinstance(m, MethodDeclaration):
                     self.reference_graph.add_node(m.name,
@@ -37,8 +35,6 @@ class Evolver:
                                                    'fitness': random(),
                                                    'size': len(m.body)
                                                   })
-                    self.association_graph.add_node(m.name, bipartite=1)
-                    self.association_graph.add_edge(c.name, m.name)
 
     def step(self):
         p_create_method = 12
@@ -59,6 +55,15 @@ class Evolver:
         logging.info('number of methods: %d' % self.reference_graph.number_of_nodes())
         return change_size
 
+    def build_class_association(self):
+        asso_graph = Graph()
+        for e in self.reference_graph.edges_iter():
+            asso_graph.add_edge(
+                self.reference_graph.node[e[0]]['class'].name,
+                self.reference_graph.node[e[1]]['class'].name)
+        # TODO should inheritance be considered?
+        return asso_graph
+
     def create_method(self):
         logging.info('creating a method')
         klass = None
@@ -75,8 +80,6 @@ class Evolver:
                                        'size': 0
                                       }
         )
-        self.association_graph.add_node(method.name, bipartite=1)
-        self.association_graph.add_edge(klass.name, method.name)
         # make a call from the new method
         self.call_method(method.name)
         # call the new method
@@ -86,15 +89,14 @@ class Evolver:
 
     def call_method(self, caller_name=None, callee_name=None):
         logging.info('calling a method')
-        caller_info = self.reference_graph[caller_name] if caller_name \
+        caller_info = self.reference_graph.node[caller_name] if caller_name \
             else sample([(data, data['size']) for data in self.reference_graph.node.values()])
-        callee_info = self.reference_graph[callee_name or self.choose_callee()]
+        callee_info = self.reference_graph.node[callee_name or self.choose_callee()]
         self.code_modifier.add_method_call(
             caller_info['method'], callee_info['method'], callee_info['class'])
         caller_info['fitness'] = random()
         caller_info['size'] += 1
         self.reference_graph.add_edge(caller_info['method'].name, callee_info['method'].name)
-        self.association_graph.add_edge(callee_info['class'].name, caller_info['method'].name)
         return 1
 
     def update_method(self):
@@ -110,17 +112,12 @@ class Evolver:
             if isinstance(deleted_stmt, MethodInvocation):
                 # check if there is any remaining references
                 remaining_method_calls = False
-                remaining_class_refs = False
                 for stmt in method_info['method'].body:
-                    if isinstance(stmt, MethodInvocation):
-                        if stmt.name == deleted_stmt.name:
-                            remaining_method_calls = True
-                        if stmt.target == deleted_stmt.target:
-                            remaining_class_refs = True
+                    if isinstance(stmt, MethodInvocation) and stmt.name == deleted_stmt.name:
+                        remaining_method_calls = True
+                        break
                 if not remaining_method_calls:
                     self.reference_graph.remove_edge(method_name, deleted_stmt.name)
-                if not remaining_class_refs and deleted_stmt.target != method_info['class'].name:
-                    self.association_graph.remove_edge(deleted_stmt.target, method_name)
         if method_info['size'] == 0:
             return self.delete_method(method_name) + 1
         else:
@@ -151,13 +148,6 @@ class Evolver:
                 caller = caller_info['method']
                 self.code_modifier.delete_method_call(caller, method_info['method'], klass)
                 change_size += 1
-                remaining_association = False
-                for stmt in caller.body:
-                    if isinstance(stmt, MethodInvocation) and stmt.target == klass.name:
-                        remaining_association = True
-                        break
-                if not remaining_association:
-                    self.association_graph.remove_edge(klass.name, caller_name)
                 if len(caller.body) == 0:
                     void_callers.append(caller_name)
                 else:
@@ -167,7 +157,6 @@ class Evolver:
         self.code_modifier.delete_method(klass, method_info['method'])
         change_size += method_info['size']
         self.reference_graph.remove_node(method_name)
-        self.association_graph.remove_node(method_name)
         if len(klass.body) == 0:
             self.inheritance_graph.remove_node(klass.name)
         # recursively remove all void callers
