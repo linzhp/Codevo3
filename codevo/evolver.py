@@ -32,8 +32,7 @@ class Evolver:
                     self.reference_graph.add_node(m.name,
                                                   {'method': m,
                                                    'class': c,
-                                                   'fitness': random(),
-                                                   'size': len(m.body)
+                                                   'fitness': random()
                                                   })
 
     def step(self):
@@ -76,8 +75,7 @@ class Evolver:
         method = self.code_modifier.create_method(klass)
         self.reference_graph.add_node(method.name,
                                       {'method': method,
-                                       'class': klass,
-                                       'size': 0
+                                       'class': klass
                                       }
         )
         # make a call from the new method
@@ -90,12 +88,11 @@ class Evolver:
     def call_method(self, caller_name=None, callee_name=None):
         logging.info('calling a method')
         caller_info = self.reference_graph.node[caller_name] if caller_name \
-            else sample([(data, data['size']) for data in self.reference_graph.node.values()])
+            else sample([(data, len(data['method'].body)) for data in self.reference_graph.node.values()])
         callee_info = self.reference_graph.node[callee_name or self.choose_callee()]
         self.code_modifier.add_method_call(
             caller_info['method'], callee_info['method'], callee_info['class'])
         caller_info['fitness'] = random()
-        caller_info['size'] += 1
         self.reference_graph.add_edge(caller_info['method'].name, callee_info['method'].name)
         return 1
 
@@ -105,10 +102,8 @@ class Evolver:
         method_info = self.reference_graph.node[method_name]
         if random() < 0.67:
             self.code_modifier.add_statement(method_info['method'])
-            method_info['size'] += 1
         else:
             deleted_stmt = self.code_modifier.delete_statement(method_info['method'])
-            method_info['size'] -= 1
             if isinstance(deleted_stmt, MethodInvocation):
                 # check if there is any remaining references
                 remaining_method_calls = False
@@ -118,7 +113,7 @@ class Evolver:
                         break
                 if not remaining_method_calls:
                     self.reference_graph.remove_edge(method_name, deleted_stmt.name)
-        if method_info['size'] == 0:
+        if len(method_info['method'].body) == 0:
             return self.delete_method(method_name) + 1
         else:
             method_info['fitness'] = random()
@@ -151,11 +146,10 @@ class Evolver:
                 if len(caller.body) == 0:
                     void_callers.append(caller_name)
                 else:
-                    caller_info['size'] = len(caller.body)
                     caller_info['fitness'] = random()
 
         self.code_modifier.delete_method(klass, method_info['method'])
-        change_size += method_info['size']
+        change_size += len(method_info['method'].body)
         self.reference_graph.remove_node(method_name)
         if len(klass.body) == 0:
             self.inheritance_graph.remove_node(klass.name)
