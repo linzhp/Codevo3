@@ -60,7 +60,8 @@ class Evolver:
             asso_graph.add_edge(
                 self.reference_graph.node[e[0]]['class'].name,
                 self.reference_graph.node[e[1]]['class'].name)
-        # TODO should inheritance be considered?
+        for e in self.inheritance_graph.edges_iter():
+            asso_graph.add_edge(*e)
         return asso_graph
 
     def create_method(self):
