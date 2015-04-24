@@ -33,12 +33,12 @@ class Evolver:
                                                   {'method': m,
                                                    'class': c,
                                                    'fitness': random()
-                                                  })
+                                                   })
 
     def step(self):
         p_create_method = 12
         p_call_method = 17
-        p_delete_method = 0
+        p_delete_method = 1
         p_update_method = 88
         change_size = 0
         while change_size == 0:
@@ -77,8 +77,8 @@ class Evolver:
         self.reference_graph.add_node(method.name,
                                       {'method': method,
                                        'class': klass
-                                      }
-        )
+                                       }
+                                      )
         # make a call from the new method
         self.call_method(method.name)
         # call the new method
@@ -101,7 +101,8 @@ class Evolver:
         logging.info('updating a method')
         method_name = self.choose_unfit_method()
         method_info = self.reference_graph.node[method_name]
-        if random() < 0.67:
+        # The method can be empty because it is the only remaining method
+        if len(method_info['method'].body) == 0 or random() < 0.67:
             self.code_modifier.add_statement(method_info['method'])
         else:
             deleted_stmt = self.code_modifier.delete_statement(method_info['method'])
@@ -152,11 +153,25 @@ class Evolver:
         self.code_modifier.delete_method(klass, method_info['method'])
         change_size += len(method_info['method'].body)
         self.reference_graph.remove_node(method_name)
-        if len(klass.body) == 0:
-            self.inheritance_graph.remove_node(klass.name)
-        # recursively remove all void callers
+        change_size += 1
+        # recursively remove all empty callers
         for caller_name in void_callers:
             change_size += self.delete_method(caller_name)
+        if len(klass.body) == 0:
+            # remove the class and all its subclasses
+            # cannot use predecessors_iter because the elements will be removed from the graph
+            for class_name in self.inheritance_graph.predecessors(klass.name):
+                c = self.inheritance_graph.node[class_name]['class']
+                method_names = []
+                for member in c.body:
+                    if isinstance(member, MethodDeclaration):
+                        method_names.append(member.name)
+                for m in method_names:
+                    change_size += self.delete_method(m)
+                # do not need to remove the subclass from the graph because it was
+                # removed after its last method was deleted
+            self.inheritance_graph.remove_node(klass.name)
+            change_size += 1
         return change_size
 
     def create_class(self):
