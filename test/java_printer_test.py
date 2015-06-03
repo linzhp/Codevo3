@@ -43,3 +43,19 @@ public class Foo {
     }
 }
         '''.strip(), printer.result)
+
+    def test_print_method_with_argument(self):
+        parser = Parser()
+        tree = parser.parse_string('''
+        public class Foo {
+            static void main(String[] args) {}
+        }
+        ''')
+        printer = JavaPrinter()
+        tree.accept(printer)
+        self.assertEqual('''
+public class Foo {
+    static void main(String[] args) {
+    }
+}
+        '''.strip(), printer.result)

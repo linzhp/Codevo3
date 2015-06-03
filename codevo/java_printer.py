@@ -40,6 +40,10 @@ class JavaPrinter(Visitor):
         self.result += ' '
         self.result += method_declaration.name
         self.result += '('
+        for p in method_declaration.parameters:
+            if not self.result.endswith('('):
+                self.result += ', '
+            p.accept(self)
         self.result += ') {\n'
         self.indent += 1
         for stmt in method_declaration.body:
@@ -82,10 +86,18 @@ class JavaPrinter(Visitor):
 
     def visit_Type(self, type):
         type.name.accept(self)
+        for i in range(type.dimensions):
+            self.result += '[]'
         return False
 
     def visit_ExpressionStatement(self, stmt):
         self.result += '    ' * self.indent
         stmt.expression.accept(self)
         self.result += ';\n'
+        return False
+
+    def visit_FormalParameter(self, arg):
+        arg.type.accept(self)
+        self.result += ' '
+        arg.variable.accept(self)
         return False
