@@ -1,11 +1,13 @@
-from plyj.model import MethodDeclaration, MethodInvocation
-from plyj.parser import Parser
-from random import random
-from codevo.utils import sample
-from codevo.code_modifier import CodeModifier
 from os import path
 from networkx import DiGraph, Graph
 import logging
+import simpy
+
+from plyj.model import MethodDeclaration, MethodInvocation
+from plyj.parser import Parser
+from random import random, gauss
+from codevo.utils import sample
+from codevo.code_modifier import CodeModifier
 
 
 class Evolver:
@@ -202,3 +204,59 @@ class Evolver:
         return sample([(method_name, len(self.reference_graph.pred[method_name]) + 1)
                        for method_name in self.reference_graph.node])
 
+
+class Developer:
+    def __init__(self, env, manager):
+        self._env = env
+        self._manager = manager
+        self._memory = []
+        env.process(self.work())
+
+    def work(self):
+        while True:
+            if self._manager.has_more_tasks():
+                self._manager.assign_task()
+                time = gauss(5, 1)
+                while time <= 0:
+                    time = gauss(5, 1)
+                yield self._env.timeout(time)
+                self.develop()
+            else:
+                time = gauss(5, 1)
+                while time <= 0:
+                    time = gauss(5, 1)
+                yield self._env.timeout(time)
+                self.refactor()
+
+    def develop(self):
+        pass
+
+    def refactor(self):
+        pass
+
+
+class Manager:
+    def __init__(self, env):
+        self.env = env
+        self.tasks = 0
+        env.process(self.work())
+
+    def has_more_tasks(self):
+        return self.tasks > 0
+
+    def assign_task(self):
+        self.tasks -= 1
+        logging.info('Task queue size: %d' % self.tasks)
+
+    def work(self):
+        while True:
+            self.tasks += 1
+            logging.info('Task queue size: %d' % self.tasks)
+            yield self.env.timeout(5)
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+    env = simpy.Environment()
+    m = Manager(env)
+    d = Developer(env, m)
+    env.run(until=100)
