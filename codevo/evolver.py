@@ -1,41 +1,21 @@
-from os import path
 from networkx import DiGraph, Graph
 import logging
 import simpy
+from random import random, gauss
+from math import floor
 
 from plyj.model import MethodDeclaration, MethodInvocation
-from plyj.parser import Parser
-from random import random, gauss
 from codevo.utils import sample
 from codevo.code_modifier import CodeModifier
 
 
 class Evolver:
-    def __init__(self, initial_classes=None):
-        """
-        :param initial_classes: assuming these classes has no method calls to or inheritances from each other
-        :return: None
-        """
-        if initial_classes is None:
-            with open(path.join(path.dirname(__file__), '..', 'App.java')) as java_file:
-                parser = Parser()
-                tree = parser.parse_file(java_file)
-                initial_classes = tree.type_declarations
-        self.p_create_class = 0.1
-        self.p_no_inherit = 0.2
+    def __init__(self):
+        self._env = simpy.Environment()
+        manager = Manager(self._env)
         self.code_modifier = CodeModifier()
-        self.inheritance_graph = DiGraph()
-        self.reference_graph = DiGraph()
-
-        for c in initial_classes:
-            self.inheritance_graph.add_node(c.name, {'class': c})
-            for m in c.body:
-                if isinstance(m, MethodDeclaration):
-                    self.reference_graph.add_node(m.name,
-                                                  {'method': m,
-                                                   'class': c,
-                                                   'fitness': random()
-                                                   })
+        for i in range(5):
+            Developer(self._env, manager, self.code_modifier)
 
     def step(self):
         p_create_method = 12
@@ -76,11 +56,6 @@ class Evolver:
                        for node, data in self.inheritance_graph.nodes_iter(data=True)]
             klass = sample(classes)
         method = self.code_modifier.create_method(klass)
-        self.reference_graph.add_node(method.name,
-                                      {'method': method,
-                                       'class': klass
-                                       }
-                                      )
         # make a call from the new method
         self.call_method(method.name)
         # call the new method
@@ -93,10 +68,6 @@ class Evolver:
         caller_info = self.reference_graph.node[caller_name] if caller_name \
             else sample([(data, len(data['method'].body)) for data in self.reference_graph.node.values()])
         callee_info = self.reference_graph.node[callee_name or self.choose_callee()]
-        self.code_modifier.add_method_call(
-            caller_info['method'], callee_info['method'], callee_info['class'])
-        caller_info['fitness'] = random()
-        self.reference_graph.add_edge(caller_info['method'].name, callee_info['method'].name)
         return 1
 
     def update_method(self):
@@ -182,9 +153,6 @@ class Evolver:
             class_info = [(node, in_degree + 1) for node, in_degree in self.inheritance_graph.in_degree_iter()]
             superclass_name = sample(class_info)
         klass = self.code_modifier.create_class(superclass_name)
-        self.inheritance_graph.add_node(klass.name, {'class': klass})
-        if superclass_name:
-            self.inheritance_graph.add_edge(klass.name, superclass_name)
         return klass
 
     def choose_unfit_method(self):
@@ -200,16 +168,19 @@ class Evolver:
                 unfit_method = method
         return unfit_method
 
-    def choose_callee(self):
-        return sample([(method_name, len(self.reference_graph.pred[method_name]) + 1)
-                       for method_name in self.reference_graph.node])
 
 
 class Developer:
-    def __init__(self, env, manager):
+    def __init__(self, env, manager, code_modifier):
         self._env = env
         self._manager = manager
         self._memory = []
+        self._code_modifier = code_modifier
+        self._p_grow_method = 0.5
+        self._p_create_method = 0.3
+        self._p_create_class = 0.1
+        self._p_has_super = 0.5
+
         env.process(self.work())
 
     def work(self):
@@ -229,7 +200,45 @@ class Developer:
                 self.refactor()
 
     def develop(self):
-        pass
+        method_name = self._code_modifier.choose_random_method()
+        for i in range(5):
+            # TODO inspect the method
+            if random() < self._p_grow_method:
+                self._code_modifier.add_statement(method_name)
+            else:
+                # make a method call
+                if random() < self._p_create_method:
+                    # create a new method
+                    if random() < self._p_create_class:
+                        # create a new class for the method
+                        superclass_name = None
+                        if random() < self._p_has_super:
+                            # has a super class
+                            memory_size = len(self._memory)
+                            if memory_size > 0:
+                                superclass_name = [self._code_modifier.get_class_name(m)
+                                                   for m in self._memory][floor(random() * memory_size)]
+                        class_name = self._code_modifier.create_class(superclass_name).name
+                    else:
+                        # choose from an existing class
+                        class_name = self._code_modifier.choose_random_class()
+                    callee_name = self._code_modifier.create_method(class_name).name
+                    self._memory.append(callee_name)
+                else:
+                    # call an existing method
+                    memory_size = len(self._memory)
+                    if memory_size > 0:
+                        callee_name = self._memory[floor(random() * memory_size)]
+                    else:
+                        callee_name = self._code_modifier.choose_random_method()
+                    # TODO Inspecting the method
+                self._code_modifier.add_method_call(method_name, callee_name)
+            self._memory.append(method_name)
+            self._code_modifier.assign_new_fitness(method_name)
+            # walk to a neighbor
+            method_name = self._code_modifier.choose_random_neighbor(method_name)
+            if method_name is None:
+                method_name = self._code_modifier.choose_random_method()
 
     def refactor(self):
         pass
