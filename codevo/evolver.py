@@ -266,5 +266,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     env = simpy.Environment()
     m = Manager(env)
-    d = Developer(env, m, CodeModifier())
+    code_modifier = CodeModifier()
+    d = Developer(env, m, code_modifier)
     env.run(until=100)
+    code_modifier.save()

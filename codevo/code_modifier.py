@@ -7,6 +7,7 @@ from plyj.model import *
 from plyj.parser import Parser
 
 from codevo.utils import sample
+from codevo.java_printer import JavaPrinter
 
 
 class CodeModifier:
@@ -130,3 +131,11 @@ class CodeModifier:
         )
         self.counter += 1
         return var
+
+    def save(self):
+        for class_name, data in self.inheritance_graph.nodes_iter(True):
+            klass = data['class']
+            java_printer = JavaPrinter()
+            klass.accept(java_printer)
+            with open(path.join('output/src', class_name + '.java'), 'w') as java_file:
+                java_file.write(java_printer.result)
