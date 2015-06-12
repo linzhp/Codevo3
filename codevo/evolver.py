@@ -1,8 +1,9 @@
 from networkx import DiGraph, Graph
 import logging
 import simpy
-from random import random, gauss
+from random import random, gauss, seed
 from math import floor
+from time import time
 
 from plyj.model import MethodDeclaration, MethodInvocation
 from codevo.utils import sample
@@ -186,62 +187,57 @@ class Developer:
     def work(self):
         while True:
             if self._manager.has_more_tasks():
+                # developing new features
                 self._manager.assign_task()
-                time = gauss(5, 1)
-                while time <= 0:
-                    time = gauss(5, 1)
-                yield self._env.timeout(time)
-                self.develop()
-            else:
-                time = gauss(5, 1)
-                while time <= 0:
-                    time = gauss(5, 1)
-                yield self._env.timeout(time)
-                self.refactor()
+                method_name = self._code_modifier.choose_random_method()
+                for i in range(5):
+                    # inspect the method
+                    reading_time = self._code_modifier.size_of(method_name)
+                    if method_name in self._memory:
+                        reading_time *= 1 - 1/(self._memory.index(method_name) + 1.1)
+                    yield self._env.timeout(reading_time)
 
-    def develop(self):
-        method_name = self._code_modifier.choose_random_method()
-        for i in range(5):
-            # TODO inspect the method
-            if random() < self._p_grow_method:
-                self._code_modifier.add_statement(method_name)
-            else:
-                # make a method call
-                if random() < self._p_create_method:
-                    # create a new method
-                    if random() < self._p_create_class:
-                        # create a new class for the method
-                        superclass_name = None
-                        if random() < self._p_has_super:
-                            # has a super class
+                    if random() < self._p_grow_method:
+                        self._code_modifier.add_statement(method_name)
+                    else:
+                        # make a method call
+                        if random() < self._p_create_method:
+                            # create a new method
+                            if random() < self._p_create_class:
+                                # create a new class for the method
+                                superclass_name = None
+                                if random() < self._p_has_super:
+                                    # has a super class
+                                    memory_size = len(self._memory)
+                                    if memory_size > 0:
+                                        superclass_name = [self._code_modifier.get_class_name(m)
+                                                           for m in self._memory][floor(random() * memory_size)]
+                                class_name = self._code_modifier.create_class(superclass_name).name
+                            else:
+                                # choose from an existing class
+                                class_name = self._code_modifier.choose_random_class()
+                            callee_name = self._code_modifier.create_method(class_name).name
+                            self._memory.append(callee_name)
+                        else:
+                            # call an existing method
                             memory_size = len(self._memory)
                             if memory_size > 0:
-                                superclass_name = [self._code_modifier.get_class_name(m)
-                                                   for m in self._memory][floor(random() * memory_size)]
-                        class_name = self._code_modifier.create_class(superclass_name).name
-                    else:
-                        # choose from an existing class
-                        class_name = self._code_modifier.choose_random_class()
-                    callee_name = self._code_modifier.create_method(class_name).name
-                    self._memory.append(callee_name)
-                else:
-                    # call an existing method
-                    memory_size = len(self._memory)
-                    if memory_size > 0:
-                        callee_name = self._memory[floor(random() * memory_size)]
-                    else:
-                        callee_name = self._code_modifier.choose_random_method()
-                    # TODO Inspecting the method
-                self._code_modifier.add_method_call(method_name, callee_name)
-            self._memory.append(method_name)
-            self._code_modifier.assign_new_fitness(method_name)
-            # walk to a neighbor
-            method_name = self._code_modifier.choose_random_neighbor(method_name)
-            if method_name is None:
-                method_name = self._code_modifier.choose_random_method()
-
-    def refactor(self):
-        pass
+                                callee_name = self._memory[floor(random() * memory_size)]
+                            else:
+                                callee_name = self._code_modifier.choose_random_method()
+                        self._code_modifier.add_method_call(method_name, callee_name)
+                    self._memory.append(method_name)
+                    self._code_modifier.assign_new_fitness(method_name)
+                    # walk to a neighbor
+                    method_name = self._code_modifier.choose_random_neighbor(method_name)
+                    if method_name is None:
+                        method_name = self._code_modifier.choose_random_method()
+            else:
+                # refactoring
+                time = gauss(5, 1)
+                while time <= 0:
+                    time = gauss(5, 1)
+                yield self._env.timeout(time)
 
 
 class Manager:
@@ -264,8 +260,11 @@ class Manager:
             yield self.env.timeout(5)
 
 if __name__ == '__main__':
+    random_seed = round(time())
+    print('Using seed', random_seed)
+    seed(random_seed)
     logging.basicConfig(level=logging.INFO)
     env = simpy.Environment()
     m = Manager(env)
-    d = Developer(env, m)
+    d = Developer(env, m, CodeModifier())
     env.run(until=100)

@@ -32,6 +32,9 @@ class CodeModifier:
     def get_class_name(self, method_name):
         return self.reference_graph.node[method_name]['class_name']
 
+    def size_of(self, method_name):
+        return len(self.reference_graph.node[method_name]['method'].body)
+
     def choose_random_method(self):
         """
         Choose a random method, weighted by its size
@@ -63,7 +66,7 @@ class CodeModifier:
         """
         The created methods are static methods for now
         """
-        klass = self.inheritance_graph[class_name]['class']
+        klass = self.inheritance_graph.node[class_name]['class']
         method = MethodDeclaration(
             'method' + str(self.counter),
             body=[], modifiers=['static'])
@@ -87,9 +90,9 @@ class CodeModifier:
         return klass
 
     def add_method_call(self, caller_name, callee_name):
-        target_name = self.reference_graph[callee_name]['class_name']
+        target_name = self.reference_graph.node[callee_name]['class_name']
         ref = MethodInvocation(callee_name, target=Name(target_name))
-        caller = self.reference_graph[caller_name]['method']
+        caller = self.reference_graph.node[caller_name]['method']
         caller.body.append(ExpressionStatement(ref))
         self.reference_graph.add_edge(caller_name, callee_name)
         return ref
@@ -104,7 +107,7 @@ class CodeModifier:
             from_method.body.remove(stmt)
 
     def add_statement(self, method_name):
-        method = self.reference_graph[method_name]['method']
+        method = self.reference_graph.node[method_name]['method']
         stmt = self.create_statement()
         method.body.append(stmt)
 
