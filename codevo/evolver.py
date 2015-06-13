@@ -7,16 +7,16 @@ from time import time
 
 from plyj.model import MethodDeclaration, MethodInvocation
 from codevo.utils import sample
-from codevo.code_modifier import CodeModifier
+from codevo.codebase import Codebase
 
 
 class Evolver:
     def __init__(self):
         self._env = simpy.Environment()
         manager = Manager(self._env)
-        self.code_modifier = CodeModifier()
+        self.codebase = Codebase()
         for i in range(5):
-            Developer(self._env, manager, self.code_modifier)
+            Developer(self._env, manager, self.codebase)
 
     def step(self):
         p_create_method = 12
@@ -56,7 +56,7 @@ class Evolver:
             classes = [(data['class'], len(data['class'].body) + 1)
                        for node, data in self.inheritance_graph.nodes_iter(data=True)]
             klass = sample(classes)
-        method = self.code_modifier.create_method(klass)
+        method = self.codebase.create_method(klass)
         # make a call from the new method
         self.call_method(method.name)
         # call the new method
@@ -77,9 +77,9 @@ class Evolver:
         method_info = self.reference_graph.node[method_name]
         # The method can be empty because it is the only remaining method
         if len(method_info['method'].body) == 0 or random() < 0.67:
-            self.code_modifier.add_statement(method_info['method'])
+            self.codebase.add_statement(method_info['method'])
         else:
-            deleted_stmt = self.code_modifier.delete_statement(method_info['method'])
+            deleted_stmt = self.codebase.delete_statement(method_info['method'])
             if isinstance(deleted_stmt, MethodInvocation):
                 # check if there is any remaining references
                 remaining_method_calls = False
@@ -117,14 +117,14 @@ class Evolver:
             if caller_name != method_name:
                 caller_info = self.reference_graph.node[caller_name]
                 caller = caller_info['method']
-                self.code_modifier.delete_method_call(caller, method_info['method'], klass)
+                self.codebase.delete_method_call(caller, method_info['method'], klass)
                 change_size += 1
                 if len(caller.body) == 0:
                     void_callers.append(caller_name)
                 else:
                     caller_info['fitness'] = random()
 
-        self.code_modifier.delete_method(klass, method_info['method'])
+        self.codebase.delete_method(klass, method_info['method'])
         change_size += len(method_info['method'].body)
         self.reference_graph.remove_node(method_name)
         change_size += 1
@@ -153,7 +153,7 @@ class Evolver:
         if random() > self.p_no_inherit:
             class_info = [(node, in_degree + 1) for node, in_degree in self.inheritance_graph.in_degree_iter()]
             superclass_name = sample(class_info)
-        klass = self.code_modifier.create_class(superclass_name)
+        klass = self.codebase.create_class(superclass_name)
         return klass
 
     def choose_unfit_method(self):
@@ -172,11 +172,11 @@ class Evolver:
 
 
 class Developer:
-    def __init__(self, env, manager, code_modifier):
+    def __init__(self, env, manager, codebase):
         self._env = env
         self._manager = manager
         self._memory = []
-        self._code_modifier = code_modifier
+        self._codebase = codebase
         self._p_grow_method = 0.5
         self._p_create_method = 0.3
         self._p_create_class = 0.1
@@ -189,16 +189,16 @@ class Developer:
             if self._manager.has_more_tasks():
                 # developing new features
                 self._manager.assign_task()
-                method_name = self._code_modifier.choose_random_method()
-                for i in range(5):
+                method_name = self._codebase.choose_random_method()
+                for i in range(10):
                     # inspect the method
-                    reading_time = self._code_modifier.size_of(method_name)
+                    reading_time = self._codebase.size_of(method_name)
                     if method_name in self._memory:
                         reading_time *= 1 - 1/(self._memory.index(method_name) + 1.1)
                     yield self._env.timeout(reading_time)
 
                     if random() < self._p_grow_method:
-                        self._code_modifier.add_statement(method_name)
+                        self._codebase.add_statement(method_name)
                     else:
                         # make a method call
                         if random() < self._p_create_method:
@@ -210,13 +210,13 @@ class Developer:
                                     # has a super class
                                     memory_size = len(self._memory)
                                     if memory_size > 0:
-                                        superclass_name = [self._code_modifier.get_class_name(m)
+                                        superclass_name = [self._codebase.get_class_name(m)
                                                            for m in self._memory][floor(random() * memory_size)]
-                                class_name = self._code_modifier.create_class(superclass_name).name
+                                class_name = self._codebase.create_class(superclass_name).name
                             else:
                                 # choose from an existing class
-                                class_name = self._code_modifier.choose_random_class()
-                            callee_name = self._code_modifier.create_method(class_name).name
+                                class_name = self._codebase.choose_random_class()
+                            callee_name = self._codebase.create_method(class_name).name
                             self._memory.append(callee_name)
                         else:
                             # call an existing method
@@ -224,14 +224,14 @@ class Developer:
                             if memory_size > 0:
                                 callee_name = self._memory[floor(random() * memory_size)]
                             else:
-                                callee_name = self._code_modifier.choose_random_method()
-                        self._code_modifier.add_method_call(method_name, callee_name)
+                                callee_name = self._codebase.choose_random_method()
+                        self._codebase.add_method_call(method_name, callee_name)
                     self._memory.append(method_name)
-                    self._code_modifier.assign_new_fitness(method_name)
+                    self._codebase.assign_new_fitness(method_name)
                     # walk to a neighbor
-                    method_name = self._code_modifier.choose_random_neighbor(method_name)
+                    method_name = self._codebase.choose_random_neighbor(method_name)
                     if method_name is None:
-                        method_name = self._code_modifier.choose_random_method()
+                        method_name = self._codebase.choose_random_method()
             else:
                 # refactoring
                 time = gauss(5, 1)
@@ -266,7 +266,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     env = simpy.Environment()
     m = Manager(env)
-    code_modifier = CodeModifier()
-    d = Developer(env, m, code_modifier)
+    codebase = Codebase()
+    d = Developer(env, m, codebase)
     env.run(until=100)
-    code_modifier.save()
+    codebase.save()

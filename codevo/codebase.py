@@ -10,7 +10,7 @@ from codevo.utils import sample
 from codevo.java_printer import JavaPrinter
 
 
-class CodeModifier:
+class Codebase:
     def __init__(self):
         self.counter = 0
         with open(path.join(path.dirname(__file__), '..', 'App.java')) as java_file:

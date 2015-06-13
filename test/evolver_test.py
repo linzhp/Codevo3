@@ -11,7 +11,7 @@ class EvolverTest(TestCase):
 
     def test_create_method(self):
         evolver = codevo.Evolver()
-        new_method_name = 'method' + str(evolver.code_modifier.counter)
+        new_method_name = 'method' + str(evolver.codebase.counter)
         with patch.object(codevo.evolver, 'random', return_value=1):
             change_size = evolver.create_method()
             self.assertEqual(change_size, 3)
