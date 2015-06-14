@@ -52,6 +52,12 @@ class Codebase:
         return sample([(class_name, len(data['class'].body) + 1)
                        for class_name, data in self.inheritance_graph.nodes_iter(data=True)])
 
+    def choose_least_fit(self):
+        """
+        :return: the name of the method with the least fitness value
+        """
+        return min(self.reference_graph, lambda n: self.reference_graph[n]['fitness'])
+
     def choose_random_neighbor(self, method_name):
         neighbors = self.reference_graph.neighbors(method_name)
         num_neighbors = len(neighbors)
@@ -62,6 +68,13 @@ class Codebase:
 
     def assign_new_fitness(self, method_name):
         self.reference_graph.node[method_name]['fitness'] = random()
+
+    def get_callers(self, method_name):
+        """
+        :param method_name:
+        :return: caller method names
+        """
+        return self.reference_graph.predecessors(method_name)
 
     def create_method(self, class_name):
         """
@@ -77,8 +90,24 @@ class Codebase:
         self.reference_graph.add_node(method.name, method_info)
         return method
 
-    def delete_method(self, class_node, method):
-        class_node.body.remove(method)
+    def delete_method(self, method_name):
+        """
+        Delete the method without updating callers
+        :param method_name:
+        :return:
+        """
+        method_info = self.reference_graph.node[method_name]
+        method = method_info['method']
+        class_name = method_info['class_name']
+        klass = self.inheritance_graph.node[class_name]['class']
+        klass.body.remove(method)
+        self.reference_graph.remove_node(method_name)
+        if len(klass.body) == 0:
+            # remove inheritance from all subclasses
+            for subclass_name in self.inheritance_graph.predecessors_iter(class_name):
+                subclass = self.inheritance_graph.node[subclass_name]['class']
+                subclass.extends = None
+            self.inheritance_graph.remove_node(class_name)
 
     def create_class(self, superclass_name):
         klass = ClassDeclaration('Class' + str(self.counter), [])

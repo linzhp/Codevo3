@@ -192,10 +192,7 @@ class Developer:
                 method_name = self._codebase.choose_random_method()
                 for i in range(10):
                     # inspect the method
-                    reading_time = self._codebase.size_of(method_name)
-                    if method_name in self._memory:
-                        reading_time *= 1 - 1/(self._memory.index(method_name) + 1.1)
-                    yield self._env.timeout(reading_time)
+                    yield self._env.timeout(self.get_reading_time(method_name))
 
                     if random() < self._p_grow_method:
                         self._codebase.add_statement(method_name)
@@ -234,10 +231,19 @@ class Developer:
                         method_name = self._codebase.choose_random_method()
             else:
                 # refactoring
-                time = gauss(5, 1)
-                while time <= 0:
-                    time = gauss(5, 1)
-                yield self._env.timeout(time)
+                delete_method_name = self._codebase.choose_least_fit()
+                yield self._env.timeout(self.get_reading_time(delete_method_name))
+
+    def get_reading_time(self, method_name):
+        """
+        Calculate the time to understand a method
+        :param method_name:
+        :return:
+        """
+        reading_time = self._codebase.size_of(method_name)
+        if method_name in self._memory:
+            reading_time *= 1 - 1/(self._memory.index(method_name) + 1.1)
+        return reading_time
 
 
 class Manager:
