@@ -81,7 +81,10 @@ class JavaPrinter(Visitor):
 
     def visit_MethodInvocation(self, method):
         method.target.accept(self)
-        self.result += '.' + method.name + '()'
+        self.result += '.' + method.name + '('
+        for a in method.arguments:
+            a.accept(self)
+        self.result += ')'
         return False
 
     def visit_Type(self, type):

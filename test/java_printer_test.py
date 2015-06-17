@@ -48,7 +48,10 @@ public class Foo {
         parser = Parser()
         tree = parser.parse_string('''
         public class Foo {
-            static void main(String[] args) {}
+            static void main(String[] args) {
+                System.out.println(args);
+                System.out.println(3);
+            }
         }
         ''')
         printer = JavaPrinter()
@@ -56,6 +59,8 @@ public class Foo {
         self.assertEqual('''
 public class Foo {
     static void main(String[] args) {
+        System.out.println(args);
+        System.out.println(3);
     }
 }
         '''.strip(), printer.result)

@@ -66,9 +66,6 @@ class Codebase:
         else:
             return None
 
-    def assign_new_fitness(self, method_name):
-        self.reference_graph.node[method_name]['fitness'] = random()
-
     def get_callers(self, method_name):
         """
         :param method_name:
@@ -120,11 +117,24 @@ class Codebase:
         return klass
 
     def add_method_call(self, caller_name, callee_name):
-        target_name = self.reference_graph.node[callee_name]['class_name']
-        ref = MethodInvocation(callee_name, target=Name(target_name))
-        caller = self.reference_graph.node[caller_name]['method']
+        callee_info = self.reference_graph.node[callee_name]
+        caller_info = self.reference_graph.node[caller_name]
+        caller = caller_info['method']
+        num_params = len(callee_info['method'].paramenters)
+        # trying to find enough variables for the method arguments
+        arguments = [Name(p.variable.name) for p in caller.parameters]
+        for s in caller.body:
+            if len(arguments) >= num_params:
+                break
+            if isinstance(s, VariableDeclaration):
+                arguments.append(s.variable.name)
+        while len(arguments) < num_params:
+            arguments.append(Literal(self.counter))
+        target_name = callee_info['class_name']
+        ref = MethodInvocation(callee_name, arguments, target=Name(target_name))
         caller.body.append(ExpressionStatement(ref))
         self.reference_graph.add_edge(caller_name, callee_name)
+        caller_info['fitness'] = random()
         return ref
 
     def delete_method_call(self, from_method, to_method, target):
@@ -137,17 +147,43 @@ class Codebase:
             from_method.body.remove(stmt)
 
     def add_statement(self, method_name):
-        method = self.reference_graph.node[method_name]['method']
-        stmt = self.create_statement()
+        method_info = self.reference_graph.node[method_name]
+        method = method_info['method']
+        stmt = self.create_variable_declaration()
         method.body.append(stmt)
+        method_info['fitness'] = random()
+
+    def add_parameter(self, method_name):
+        """
+        Add a parameter to the method, and update all its callers
+        :param method_name:
+        :return:
+        """
+        method_info = self.reference_graph.node[method_name]
+        method = method_info['method']
+        parameters = method.parameters
+        parameters.append(FormalParameter(Variable('param%d' % len(parameters)), Type(Name('int'))))
+        for caller_name, data in self.reference_graph.predecessors_iter(method_name):
+            caller = data['method']
+            local_variables = [p.variable.name for p in caller.parameters]
+            for s in caller.body:
+                if isinstance(s, VariableDeclaration):
+                    local_variables.append(s.variable.name)
+                elif isinstance(s, ExpressionStatement) and \
+                    isinstance(s.expression, MethodInvocation) and \
+                    s.expression.name == method_name:
+                    if len(local_variables) > 0:
+                        s.expression.arguments.append(Name(local_variables[-1]))
+                    else:
+                        s.expression.arguments.append(Literal(self.counter))
+            data['fitness'] = random()
 
     def delete_statement(self, method):
         return method.body.pop()
 
-    def create_statement(self):
+    def create_variable_declaration(self):
         """
-        Generate a statement. May use a fuzzer to generate a variety of statements
-        :return:
+        :return: the new variable declaration
         """
         var = VariableDeclaration(
             type='int',

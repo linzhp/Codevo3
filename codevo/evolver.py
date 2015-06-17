@@ -224,7 +224,6 @@ class Developer:
                                 callee_name = self._codebase.choose_random_method()
                         self._codebase.add_method_call(method_name, callee_name)
                     self._memory.append(method_name)
-                    self._codebase.assign_new_fitness(method_name)
                     # walk to a neighbor
                     method_name = self._codebase.choose_random_neighbor(method_name)
                     if method_name is None:
@@ -233,6 +232,9 @@ class Developer:
                 # refactoring
                 delete_method_name = self._codebase.choose_least_fit()
                 yield self._env.timeout(self.get_reading_time(delete_method_name))
+                callers = self._codebase.get_callers(delete_method_name)
+                self._codebase.delete_method(delete_method_name)
+                update_method_name = self._codebase.choose_least_fit()
 
     def get_reading_time(self, method_name):
         """

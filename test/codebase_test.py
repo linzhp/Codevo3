@@ -5,7 +5,7 @@ from codevo import Codebase, JavaPrinter
 class CodebaseTest(TestCase):
     def test_create_statement(self):
         code_modifier = Codebase()
-        stmt = code_modifier.create_statement()
+        stmt = code_modifier.create_variable_declaration()
         printer = JavaPrinter()
         stmt.accept(printer)
         self.assertEqual('int var0 = 0;\n', printer.result)
