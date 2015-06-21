@@ -1,6 +1,6 @@
 from os import path
 from random import random
-from networkx import DiGraph
+from networkx import DiGraph, relabel_nodes
 from math import floor
 
 from plyj.model import *
@@ -36,6 +36,12 @@ class Codebase:
     def size_of(self, method_name):
         return len(self.reference_graph.node[method_name]['method'].body)
 
+    def number_of_methods(self):
+        return len(self.reference_graph)
+
+    def number_of_classes(self):
+        return len(self.inheritance_graph)
+
     def choose_random_method(self):
         """
         Choose a random method, weighted by its size
@@ -56,7 +62,7 @@ class Codebase:
         """
         :return: the name of the method with the least fitness value
         """
-        return min(self.reference_graph, lambda n: self.reference_graph[n]['fitness'])
+        return min(self.reference_graph, key=lambda n: self.reference_graph.node[n]['fitness'])
 
     def choose_random_neighbor(self, method_name):
         neighbors = self.reference_graph.neighbors(method_name)
@@ -66,12 +72,12 @@ class Codebase:
         else:
             return None
 
-    def get_callers(self, method_name):
+    def caller_names(self, method_name):
         """
         :param method_name:
-        :return: caller method names
+        :return: caller method names iterator
         """
-        return self.reference_graph.predecessors(method_name)
+        return self.reference_graph.predecessors_iter(method_name)
 
     def create_method(self, class_name):
         """
@@ -89,10 +95,18 @@ class Codebase:
 
     def delete_method(self, method_name):
         """
-        Delete the method without updating callers
+        Delete the method and update callers
         :param method_name:
         :return:
         """
+        # remove method invocation
+        for caller_name in self.reference_graph.predecessors_iter(method_name):
+            caller_info = self.reference_graph.node[caller_name]
+            caller = caller_info['method']
+            caller.body = [stmt for stmt in caller.body
+                           if not Codebase.is_invocation(stmt, method_name)
+                           ]
+            caller_info['fitness'] = random()
         method_info = self.reference_graph.node[method_name]
         method = method_info['method']
         class_name = method_info['class_name']
@@ -120,14 +134,15 @@ class Codebase:
         callee_info = self.reference_graph.node[callee_name]
         caller_info = self.reference_graph.node[caller_name]
         caller = caller_info['method']
-        num_params = len(callee_info['method'].paramenters)
+        num_params = len(callee_info['method'].parameters)
         # trying to find enough variables for the method arguments
         arguments = [Name(p.variable.name) for p in caller.parameters]
         for s in caller.body:
             if len(arguments) >= num_params:
                 break
             if isinstance(s, VariableDeclaration):
-                arguments.append(s.variable.name)
+                for vd in s.variable_declarators:
+                    arguments.append(Name(vd.variable.name))
         while len(arguments) < num_params:
             arguments.append(Literal(self.counter))
         target_name = callee_info['class_name']
@@ -140,9 +155,9 @@ class Codebase:
     def delete_method_call(self, from_method, to_method, target):
         to_delete = [stmt for stmt in from_method.body
                      if isinstance(stmt, ExpressionStatement) and
-                        isinstance(stmt.expression, MethodInvocation) and
-                        stmt.expression.name == to_method.name and
-                        stmt.expression.target.value == target.name]
+                     isinstance(stmt.expression, MethodInvocation) and
+                     stmt.expression.name == to_method.name and
+                     stmt.expression.target.value == target.name]
         for stmt in to_delete:
             from_method.body.remove(stmt)
 
@@ -163,20 +178,64 @@ class Codebase:
         method = method_info['method']
         parameters = method.parameters
         parameters.append(FormalParameter(Variable('param%d' % len(parameters)), Type(Name('int'))))
-        for caller_name, data in self.reference_graph.predecessors_iter(method_name):
-            caller = data['method']
+        for caller_name in self.reference_graph.predecessors_iter(method_name):
+            caller_info = self.reference_graph.node[caller_name]
+            caller = caller_info['method']
             local_variables = [p.variable.name for p in caller.parameters]
             for s in caller.body:
                 if isinstance(s, VariableDeclaration):
-                    local_variables.append(s.variable.name)
-                elif isinstance(s, ExpressionStatement) and \
-                    isinstance(s.expression, MethodInvocation) and \
-                    s.expression.name == method_name:
+                    for vd in s.variable_declarators:
+                        local_variables.append(vd.variable.name)
+                elif Codebase.is_invocation(s, method_name):
                     if len(local_variables) > 0:
                         s.expression.arguments.append(Name(local_variables[-1]))
                     else:
                         s.expression.arguments.append(Literal(self.counter))
-            data['fitness'] = random()
+            caller_info['fitness'] = random()
+
+    def move_method(self, method_name, to_class_name):
+        method_info = self.reference_graph.node[method_name]
+        from_class_name = method_info['class_name']
+        if from_class_name == to_class_name:
+            return
+        method = method_info['method']
+        from_class_body = self.inheritance_graph.node[from_class_name]['class'].body
+        from_class_body.remove(method)
+        to_class_body = self.inheritance_graph.node[to_class_name]['class'].body
+        to_class_body.append(method)
+        method_info['class_name'] = to_class_name
+        # update references
+        for method_invocation in self.method_invocations(method_name):
+            method_invocation.target = Name(to_class_name)
+
+    def rename_method(self, method_name):
+        new_name = 'method%d' % self.counter
+        self.counter += 1
+        method_info = self.reference_graph.node[method_name]
+        method_info['method'].name = new_name
+        for inv in self.method_invocations(method_name):
+            inv.name = new_name
+        relabel_nodes(self.reference_graph, {method_name: new_name}, copy=False)
+        method_info['fitness'] = random()
+        return new_name
+
+    def method_invocations(self, method_name):
+        """
+        Generator for MethodInvocation instances of method_name
+        :param method_name:
+        :return:
+        """
+        for caller_name in self.reference_graph.predecessors_iter(method_name):
+            caller = self.reference_graph.node[caller_name]['method']
+            for stmt in caller.body:
+                if Codebase.is_invocation(stmt, method_name):
+                    yield stmt.expression
+
+    @staticmethod
+    def is_invocation(stmt, method_name):
+        return isinstance(stmt, ExpressionStatement) and \
+               isinstance(stmt.expression, MethodInvocation) and \
+               stmt.expression.name == method_name
 
     def delete_statement(self, method):
         return method.body.pop()

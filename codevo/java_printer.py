@@ -83,6 +83,8 @@ class JavaPrinter(Visitor):
         method.target.accept(self)
         self.result += '.' + method.name + '('
         for a in method.arguments:
+            if not self.result.endswith('('):
+                self.result += ', '
             a.accept(self)
         self.result += ')'
         return False

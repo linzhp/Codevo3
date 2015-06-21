@@ -181,10 +181,14 @@ class Developer:
         self._p_create_method = 0.3
         self._p_create_class = 0.1
         self._p_has_super = 0.5
+        # refactorings
+        self._p_rename = 0.4
+        self._p_move = 0.5
 
         env.process(self.work())
 
     def work(self):
+        # TODO acquire locks
         while True:
             if self._manager.has_more_tasks():
                 # developing new features
@@ -230,11 +234,46 @@ class Developer:
                         method_name = self._codebase.choose_random_method()
             else:
                 # refactoring
-                delete_method_name = self._codebase.choose_least_fit()
-                yield self._env.timeout(self.get_reading_time(delete_method_name))
-                callers = self._codebase.get_callers(delete_method_name)
-                self._codebase.delete_method(delete_method_name)
-                update_method_name = self._codebase.choose_least_fit()
+                unfit_method_name = self._codebase.choose_least_fit()
+                yield self._env.timeout(self.get_reading_time(unfit_method_name))
+                n = random()
+                if self._codebase.number_of_methods() == 1 or n < self._p_rename:
+                    # rename a method, don't need to understand callers
+                    new_method_name = self._codebase.rename_method(unfit_method_name)
+                    self._memory = [new_method_name if m == unfit_method_name else m for m in self._memory]
+                    self._memory.append(new_method_name)
+                elif self._codebase.number_of_classes() == 1 or n > self._p_rename + self._p_move:
+                    # merge two methods
+                    caller_names = [n for n in self._codebase.caller_names(unfit_method_name)
+                                    if n != unfit_method_name]
+                    self._codebase.delete_method(unfit_method_name)
+                    # remove the unfit method from memory
+                    self._memory = [m for m in self._memory if m != unfit_method_name]
+                    update_method_name = self._codebase.choose_least_fit()
+                    yield self._env.timeout(self.get_reading_time(update_method_name))
+                    self._memory.append(update_method_name)
+                    for method_name in self._codebase.caller_names(update_method_name):
+                        yield self._env.timeout(self.get_reading_time(method_name))
+                        self._memory.append(method_name)
+                    self._codebase.add_parameter(update_method_name)
+                    for method_name in caller_names:
+                        yield self._env.timeout(self.get_reading_time(method_name))
+                        self._codebase.add_method_call(method_name, update_method_name)
+                        self._memory.append(method_name)
+                else:
+                    # move a method closer to its callers, don't need to understand callers
+                    class_name = self._codebase.get_class_name(unfit_method_name)
+                    # initialize the original class name to 0.5 to break tie
+                    reference_counts = {class_name: 0.5}
+                    for method_name in self._codebase.caller_names(unfit_method_name):
+                        class_name = self._codebase.get_class_name(method_name)
+                        if class_name in reference_counts:
+                            reference_counts[class_name] += 1
+                        else:
+                            reference_counts[class_name] = 1
+                    closest_class_name = max(reference_counts, key=lambda c: reference_counts[c])
+                    self._codebase.move_method(unfit_method_name, closest_class_name)
+                    self._memory.append(unfit_method_name)
 
     def get_reading_time(self, method_name):
         """
@@ -242,7 +281,7 @@ class Developer:
         :param method_name:
         :return:
         """
-        reading_time = self._codebase.size_of(method_name)
+        reading_time = self._codebase.size_of(method_name) + 0.1
         if method_name in self._memory:
             reading_time *= 1 - 1/(self._memory.index(method_name) + 1.1)
         return reading_time
@@ -265,7 +304,7 @@ class Manager:
         while True:
             self.tasks += 1
             logging.info('Task queue size: %d' % self.tasks)
-            yield self.env.timeout(5)
+            yield self.env.timeout(20)
 
 if __name__ == '__main__':
     random_seed = round(time())
@@ -276,5 +315,5 @@ if __name__ == '__main__':
     m = Manager(env)
     codebase = Codebase()
     d = Developer(env, m, codebase)
-    env.run(until=100)
+    env.run(until=1000)
     codebase.save()
