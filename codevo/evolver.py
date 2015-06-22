@@ -234,7 +234,7 @@ class Developer:
                         method_name = self._codebase.choose_random_method()
             else:
                 # refactoring
-                unfit_method_name = self._codebase.choose_least_fit()
+                unfit_method_name = self._codebase.least_fit_method()
                 yield self._env.timeout(self.get_reading_time(unfit_method_name))
                 n = random()
                 if self._codebase.number_of_methods() == 1 or n < self._p_rename:
@@ -249,7 +249,7 @@ class Developer:
                     self._codebase.delete_method(unfit_method_name)
                     # remove the unfit method from memory
                     self._memory = [m for m in self._memory if m != unfit_method_name]
-                    update_method_name = self._codebase.choose_least_fit()
+                    update_method_name = self._codebase.least_fit_method()
                     yield self._env.timeout(self.get_reading_time(update_method_name))
                     self._memory.append(update_method_name)
                     for method_name in self._codebase.caller_names(update_method_name):
