@@ -2,6 +2,7 @@ from os import path
 from random import random
 from networkx import DiGraph, relabel_nodes
 from math import floor
+from heapq import nsmallest
 
 from plyj.model import *
 from plyj.parser import Parser
@@ -42,6 +43,9 @@ class Codebase:
     def number_of_classes(self):
         return len(self._inheritance_graph)
 
+    def has_method(self, method_name):
+        return self._method_call_graph.has_node(method_name)
+
     def choose_random_method(self):
         """
         Choose a random method, weighted by its size
@@ -58,11 +62,11 @@ class Codebase:
         return sample([(class_name, len(data['class'].body) + 1)
                        for class_name, data in self._inheritance_graph.nodes_iter(data=True)])
 
-    def least_fit_method(self):
+    def least_fit_methods(self, n=1):
         """
         :return: the name of the method with smallest fitness value
         """
-        return min(self._method_call_graph,
+        return nsmallest(n, self._method_call_graph,
                          key=lambda method_name: self._method_call_graph.node[method_name]['fitness'])
 
     def choose_random_neighbor(self, method_name):
