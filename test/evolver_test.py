@@ -12,7 +12,7 @@ class EvolverTest(TestCase):
     def test_create_method(self):
         evolver = codevo.Evolver()
         new_method_name = 'method' + str(evolver.codebase.counter)
-        with patch.object(codevo.evolver, 'random', return_value=1):
+        with patch.object(codevo.team, 'random', return_value=1):
             change_size = evolver.create_method()
             self.assertEqual(change_size, 3)
             self.assertIn(new_method_name, evolver.reference_graph)
@@ -31,7 +31,7 @@ class EvolverTest(TestCase):
 
     def test_create_class(self):
         evolver = codevo.Evolver()
-        with patch.object(codevo.evolver, 'random', return_value=1):
+        with patch.object(codevo.team, 'random', return_value=1):
             klass = evolver.create_class()
             self.assertIsInstance(klass, ClassDeclaration)
             self.assertIs(evolver.inheritance_graph.node[klass.name]['class'], klass)
