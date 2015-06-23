@@ -141,7 +141,12 @@ class Codebase:
         caller = caller_info['method']
         num_params = len(callee_info['method'].parameters)
         # trying to find enough variables for the method arguments
-        arguments = [Name(p.variable.name) for p in caller.parameters]
+        arguments = []
+        for p in caller.parameters:
+            if len(arguments) >= num_params:
+                break
+            else:
+                arguments.append(Name(p.variable.name))
         for s in caller.body:
             if len(arguments) >= num_params:
                 break

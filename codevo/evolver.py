@@ -172,11 +172,11 @@ class Evolver:
 
 
 class Developer:
-    def __init__(self, env, manager, codebase):
-        self._env = env
+    def __init__(self, manager):
+        self._env = manager.env
         self._manager = manager
         self._memory = []
-        self._codebase = codebase
+        self._codebase = manager.codebase
         self._p_grow_method = 0.5
         self._p_create_method = 0.3
         self._p_create_class = 0.1
@@ -188,7 +188,6 @@ class Developer:
         env.process(self.work())
 
     def work(self):
-        # TODO acquire locks
         while True:
             if self._manager.has_more_tasks():
                 # developing new features
@@ -309,23 +308,34 @@ class Developer:
 
 
 class Manager:
-    def __init__(self, env):
+    def __init__(self, env, codebase):
         self.env = env
         self.tasks = 0
+        self.codebase = codebase
         env.process(self.work())
+        self.developers = [Developer(self)]
 
     def has_more_tasks(self):
         return self.tasks > 0
 
     def assign_task(self):
         self.tasks -= 1
-        logging.info('Task queue size: %d' % self.tasks)
+        logging.info('Task assigned, queue size: %d' % self.tasks)
 
     def work(self):
         while True:
-            self.tasks += 1
-            logging.info('Task queue size: %d' % self.tasks)
-            yield self.env.timeout(20)
+            if self.tasks < 10:
+                # thinking out new task
+                logging.info('Creating new task...')
+                yield self.env.timeout(20)
+                self.tasks += 1
+                logging.info('Task created, queue size: %d' % self.tasks)
+            else:
+                # recruiting new developer
+                logging.info('Recruiting new developer')
+                yield self.env.timeout(20)
+                self.developers.append(Developer(self))
+                logging.info('Developer joined, team size: %d' % len(self.developers))
 
 if __name__ == '__main__':
     random_seed = round(time())
@@ -333,9 +343,7 @@ if __name__ == '__main__':
     seed(random_seed)
     logging.basicConfig(level=logging.INFO)
     env = simpy.Environment()
-    m = Manager(env)
     codebase = Codebase()
-    d1 = Developer(env, m, codebase)
-    d2 = Developer(env, m, codebase)
+    m = Manager(env, codebase)
     env.run(until=2000)
     codebase.save()
