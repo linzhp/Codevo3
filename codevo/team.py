@@ -1,10 +1,6 @@
 import logging
-import simpy
-from random import random, gauss, seed
+from random import random
 from math import floor, exp
-from time import time
-
-from codevo.codebase import Codebase
 
 class Developer:
     def __init__(self, manager):
@@ -20,10 +16,11 @@ class Developer:
         self._p_rename = 0.4
         self._p_move = 0.5
 
-        env.process(self.work())
+        self._env.process(self.work())
 
     def work(self):
         while True:
+            change_size = 0
             if self._manager.has_more_tasks():
                 # developing new features
                 self._manager.assign_task()
@@ -36,7 +33,7 @@ class Developer:
                         method_name = self._codebase.choose_random_method()
                         continue
                     if random() < self._p_grow_method:
-                        self._codebase.add_statement(method_name)
+                        change_size += self._codebase.add_statement(method_name)
                     else:
                         # make a method call
                         self._memory = [m for m in self._memory if self._codebase.has_method(m)]
@@ -51,11 +48,13 @@ class Developer:
                                     if memory_size > 0:
                                         superclass_name = [self._codebase.get_class_name(m)
                                                            for m in self._memory][floor(random() * memory_size)]
-                                class_name = self._codebase.create_class(superclass_name).name
+                                c, class_name = self._codebase.create_class(superclass_name)
+                                change_size += c
                             else:
                                 # choose from an existing class
                                 class_name = self._codebase.choose_random_class()
-                            callee_name = self._codebase.create_method(class_name).name
+                            c, callee_name = self._codebase.create_method(class_name)
+                            change_size += c
                             self._memory.append(callee_name)
                         else:
                             # call an existing method
@@ -64,7 +63,7 @@ class Developer:
                                 callee_name = self._memory[floor(random() * memory_size)]
                             else:
                                 callee_name = self._codebase.choose_random_method()
-                        self._codebase.add_method_call(method_name, callee_name)
+                        change_size += self._codebase.add_method_call(method_name, callee_name)
                     self._memory.append(method_name)
                     # walk to a neighbor
                     method_name = self._codebase.choose_random_neighbor(method_name)
@@ -79,7 +78,8 @@ class Developer:
                     # rename a method, don't need to understand callers
                     if not self._codebase.has_method(unfit_method_name):
                         continue
-                    new_method_name = self._codebase.rename_method(unfit_method_name)
+                    c, new_method_name = self._codebase.rename_method(unfit_method_name)
+                    change_size += c
                     self._memory = [new_method_name if m == unfit_method_name else m for m in self._memory]
                     self._memory.append(new_method_name)
                 elif self._codebase.number_of_classes() == 1 or n > self._p_rename + self._p_move:
@@ -99,15 +99,16 @@ class Developer:
                     # Delete the method
                     caller_names = [n for n in self._codebase.caller_names(delete_method_name)
                                     if n != delete_method_name]
-                    self._codebase.delete_method(delete_method_name)
+                    change_size += self._codebase.delete_method(delete_method_name)
                     self._memory = [m for m in self._memory if m != delete_method_name]
                     # Add a parameter to another method
-                    self._codebase.add_parameter(update_method_name)
+                    change_size += self._codebase.add_parameter(update_method_name)
                     self._memory.append(update_method_name)
                     for method_name in self._codebase.caller_names(update_method_name):
                         self._memory.append(method_name)
                     # Make the callers of the former method call the latter method
                     for method_name in caller_names:
+                        # treat them as updating method calls, so the change size doesn't increase here
                         self._codebase.add_method_call(method_name, update_method_name)
                         self._memory.append(method_name)
                 else:
@@ -126,8 +127,10 @@ class Developer:
                         else:
                             reference_counts[class_name] = 1
                     closest_class_name = max(reference_counts, key=lambda c: reference_counts[c])
-                    self._codebase.move_method(unfit_method_name, closest_class_name)
+                    change_size += self._codebase.move_method(unfit_method_name, closest_class_name)
                     self._memory.append(unfit_method_name)
+            if change_size > 0:
+                self._codebase.commit(change_size)
 
     def get_reading_time(self, method_name):
         """
@@ -171,14 +174,3 @@ class Manager:
                 yield self.env.timeout(20)
                 self.developers.append(Developer(self))
                 logging.info('Developer joined, team size: %d' % len(self.developers))
-
-if __name__ == '__main__':
-    random_seed = round(time())
-    print('Using seed', random_seed)
-    seed(random_seed)
-    logging.basicConfig(level=logging.INFO)
-    env = simpy.Environment()
-    codebase = Codebase()
-    m = Manager(env, codebase)
-    env.run(until=2000)
-    codebase.save()

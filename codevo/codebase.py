@@ -1,8 +1,11 @@
 from os import path
 from random import random
-from networkx import DiGraph, relabel_nodes
+from networkx import Graph, DiGraph, relabel_nodes
+from networkx.readwrite import json_graph
+import json
 from math import floor
 from heapq import nsmallest
+import csv
 
 from plyj.model import *
 from plyj.parser import Parser
@@ -14,6 +17,7 @@ from codevo.java_printer import JavaPrinter
 class Codebase:
     def __init__(self):
         self.counter = 0
+        self._revisions = []
         with open(path.join(path.dirname(__file__), '..', 'App.java')) as java_file:
             parser = Parser()
             tree = parser.parse_file(java_file)
@@ -84,6 +88,18 @@ class Codebase:
         """
         return self._method_call_graph.predecessors_iter(method_name)
 
+    def method_invocations(self, method_name):
+        """
+        Generator for MethodInvocation instances of method_name
+        :param method_name:
+        :return:
+        """
+        for caller_name in self._method_call_graph.predecessors_iter(method_name):
+            caller = self._method_call_graph.node[caller_name]['method']
+            for stmt in caller.body:
+                if Codebase.is_invocation(stmt, method_name):
+                    yield stmt.expression
+
     def create_method(self, class_name):
         """
         The created methods are static methods for now
@@ -96,7 +112,7 @@ class Codebase:
         klass.body.append(method)
         method_info = {'method': method, 'class_name': class_name, 'fitness': random()}
         self._method_call_graph.add_node(method.name, method_info)
-        return method
+        return 1, method.name
 
     def delete_method(self, method_name):
         """
@@ -105,12 +121,15 @@ class Codebase:
         :return:
         """
         # remove method invocation
+        change_size = 1
         for caller_name in self._method_call_graph.predecessors_iter(method_name):
             caller_info = self._method_call_graph.node[caller_name]
             caller = caller_info['method']
+            old_size = len(caller.body)
             caller.body = [stmt for stmt in caller.body
                            if not Codebase.is_invocation(stmt, method_name)
                            ]
+            change_size += old_size - len(caller.body)
             caller_info['fitness'] = random()
         method_info = self._method_call_graph.node[method_name]
         method = method_info['method']
@@ -123,7 +142,10 @@ class Codebase:
             for subclass_name in self._inheritance_graph.predecessors_iter(class_name):
                 subclass = self._inheritance_graph.node[subclass_name]['class']
                 subclass.extends = None
+                change_size += 1
             self._inheritance_graph.remove_node(class_name)
+            change_size += 1
+        return change_size
 
     def create_class(self, superclass_name):
         klass = ClassDeclaration('Class' + str(self.counter), [])
@@ -133,7 +155,7 @@ class Codebase:
         self._inheritance_graph.add_node(klass.name, {'class': klass})
         if superclass_name:
             self._inheritance_graph.add_edge(klass.name, superclass_name)
-        return klass
+        return 1, klass.name
 
     def add_method_call(self, caller_name, callee_name):
         callee_info = self._method_call_graph.node[callee_name]
@@ -160,16 +182,7 @@ class Codebase:
         caller.body.append(ExpressionStatement(ref))
         self._method_call_graph.add_edge(caller_name, callee_name)
         caller_info['fitness'] = random()
-        return ref
-
-    def delete_method_call(self, from_method, to_method, target):
-        to_delete = [stmt for stmt in from_method.body
-                     if isinstance(stmt, ExpressionStatement) and
-                     isinstance(stmt.expression, MethodInvocation) and
-                     stmt.expression.name == to_method.name and
-                     stmt.expression.target.value == target.name]
-        for stmt in to_delete:
-            from_method.body.remove(stmt)
+        return 1
 
     def add_statement(self, method_name):
         method_info = self._method_call_graph.node[method_name]
@@ -177,6 +190,7 @@ class Codebase:
         stmt = self.create_variable_declaration()
         method.body.append(stmt)
         method_info['fitness'] = random()
+        return 1
 
     def add_parameter(self, method_name):
         """
@@ -188,6 +202,7 @@ class Codebase:
         method = method_info['method']
         parameters = method.parameters
         parameters.append(FormalParameter(Variable('param%d' % len(parameters)), Type(Name('int'))))
+        change_size = 1
         for caller_name in self._method_call_graph.predecessors_iter(method_name):
             caller_info = self._method_call_graph.node[caller_name]
             caller = caller_info['method']
@@ -201,54 +216,40 @@ class Codebase:
                         s.expression.arguments.append(Name(local_variables[-1]))
                     else:
                         s.expression.arguments.append(Literal(self.counter))
+                change_size += 1
             caller_info['fitness'] = random()
+        return change_size
 
     def move_method(self, method_name, to_class_name):
         method_info = self._method_call_graph.node[method_name]
         from_class_name = method_info['class_name']
         if from_class_name == to_class_name:
-            return
+            return 0
         method = method_info['method']
         from_class_body = self._inheritance_graph.node[from_class_name]['class'].body
         from_class_body.remove(method)
         to_class_body = self._inheritance_graph.node[to_class_name]['class'].body
         to_class_body.append(method)
         method_info['class_name'] = to_class_name
+        change_size = 1
         # update references
         for method_invocation in self.method_invocations(method_name):
             method_invocation.target = Name(to_class_name)
+            change_size += 1
+        return change_size
 
     def rename_method(self, method_name):
         new_name = 'method%d' % self.counter
         self.counter += 1
         method_info = self._method_call_graph.node[method_name]
         method_info['method'].name = new_name
+        change_size = 1
         for inv in self.method_invocations(method_name):
             inv.name = new_name
+            change_size += 1
         relabel_nodes(self._method_call_graph, {method_name: new_name}, copy=False)
         method_info['fitness'] = random()
-        return new_name
-
-    def method_invocations(self, method_name):
-        """
-        Generator for MethodInvocation instances of method_name
-        :param method_name:
-        :return:
-        """
-        for caller_name in self._method_call_graph.predecessors_iter(method_name):
-            caller = self._method_call_graph.node[caller_name]['method']
-            for stmt in caller.body:
-                if Codebase.is_invocation(stmt, method_name):
-                    yield stmt.expression
-
-    @staticmethod
-    def is_invocation(stmt, method_name):
-        return isinstance(stmt, ExpressionStatement) and \
-               isinstance(stmt.expression, MethodInvocation) and \
-               stmt.expression.name == method_name
-
-    def delete_statement(self, method):
-        return method.body.pop()
+        return change_size, new_name
 
     def create_variable_declaration(self):
         """
@@ -266,10 +267,60 @@ class Codebase:
         self.counter += 1
         return var
 
-    def save(self):
-        for class_name, data in self._inheritance_graph.nodes_iter(True):
-            klass = data['class']
-            java_printer = JavaPrinter()
-            klass.accept(java_printer)
-            with open(path.join('output/src', class_name + '.java'), 'w') as java_file:
-                java_file.write(java_printer.result)
+    def save(self, output_dir):
+        with open(path.join(output_dir, 'commits.csv'), 'w', newline='') as commits_file:
+            writer = csv.DictWriter(commits_file, ['min_fitness', 'change_size'])
+            writer.writeheader()
+            writer.writerows(self._revisions)
+
+        with open(path.join(output_dir, 'classes.csv'), 'w', newline='') as classes_file:
+            writer = csv.DictWriter(classes_file, ['class', 'subclasses', 'lines'])
+            writer.writeheader()
+            for class_name, in_degree in self._inheritance_graph.in_degree_iter():
+                klass = self._inheritance_graph.node[class_name]['class']
+                java_printer = JavaPrinter()
+                klass.accept(java_printer)
+                writer.writerow({'class': class_name,
+                                 'subclasses': in_degree,
+                                 'lines': java_printer.result.count('\n') + 1})
+                with open(path.join(output_dir, class_name + '.java'), 'w') as java_file:
+                    java_file.write(java_printer.result)
+
+        with open(path.join(output_dir, 'methods.csv'), 'w', newline='') as methods_file:
+            writer = csv.DictWriter(methods_file, ['method', 'class', 'ref_count'])
+            writer.writeheader()
+            for method_name, in_degree in self._method_call_graph.in_degree_iter():
+                writer.writerow({
+                    'method': method_name,
+                    'class': self._method_call_graph.node[method_name]['class_name'],
+                    'ref_count': in_degree
+                })
+
+        with open(path.join(output_dir, 'methods.json'), 'w') as methods_file:
+            data = json_graph.node_link_data(self._method_call_graph)
+            json.dump(data, methods_file, skipkeys=True, default=lambda d: None)
+
+        association_graph = Graph()
+        for e in self._method_call_graph.edges_iter():
+            association_graph.add_edge(
+                self._method_call_graph.node[e[0]]['class_name'],
+                self._method_call_graph.node[e[1]]['class_name'])
+        for e in self._inheritance_graph.edges_iter():
+            association_graph.add_edge(*e)
+        with open(path.join(output_dir, 'classes.json'), 'w') as classes_file:
+            data = json_graph.node_link_data(association_graph)
+            json.dump(data, classes_file, skipkeys=True)
+
+    def commit(self, change_size):
+        self._revisions.append({
+            'min_fitness': min(self._method_call_graph.node[method_name]['fitness']
+                               for method_name in self._method_call_graph),
+            'change_size': change_size
+        })
+
+    @staticmethod
+    def is_invocation(stmt, method_name):
+        return isinstance(stmt, ExpressionStatement) and \
+               isinstance(stmt.expression, MethodInvocation) and \
+               stmt.expression.name == method_name
+
