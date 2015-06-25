@@ -283,7 +283,7 @@ class Codebase:
                 writer.writerow({'class': class_name,
                                  'subclasses': in_degree,
                                  'lines': java_printer.result.count('\n') + 1})
-                with open(path.join(output_dir, class_name + '.java'), 'w') as java_file:
+                with open(path.join(output_dir, 'src', class_name + '.java'), 'w') as java_file:
                     java_file.write(java_printer.result)
 
         with open(path.join(output_dir, 'methods.csv'), 'w', newline='') as methods_file:

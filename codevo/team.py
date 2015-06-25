@@ -1,5 +1,5 @@
 import logging
-from random import random
+from random import random, lognormvariate
 from math import floor, exp
 
 class Developer:
@@ -18,14 +18,22 @@ class Developer:
 
         self._env.process(self.work())
 
+    def actions_needed(self):
+        a = 10 # floor(lognormvariate(10, 5))
+        return a if a > 0 else 1
+
     def work(self):
         while True:
             change_size = 0
             if self._manager.has_more_tasks():
                 # developing new features
                 self._manager.assign_task()
-                method_name = self._codebase.choose_random_method()
+                changed_methods = set()
+                method_name = None
+                # while method_name is not None and method_name not in changed_methods:
                 for i in range(10):
+                    if method_name is None:
+                        method_name = self._codebase.choose_random_method()
                     # inspect the method
                     yield self._env.timeout(self.get_reading_time(method_name))
                     if not self._codebase.has_method(method_name):
@@ -67,8 +75,6 @@ class Developer:
                     self._memory.append(method_name)
                     # walk to a neighbor
                     method_name = self._codebase.choose_random_neighbor(method_name)
-                    if method_name is None:
-                        method_name = self._codebase.choose_random_method()
             else:
                 # refactoring
                 n = random()
