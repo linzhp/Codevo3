@@ -29,17 +29,16 @@ class Developer:
                 # developing new features
                 self._manager.assign_task()
                 changed_methods = set()
-                method_name = None
-                # while method_name is not None and method_name not in changed_methods:
-                for i in range(10):
+                method_name = self._codebase.choose_random_method()
+                while method_name is not None and method_name not in changed_methods:
                     if method_name is None:
-                        method_name = self._codebase.choose_random_method()
+                        break
                     # inspect the method
                     yield self._env.timeout(self.get_reading_time(method_name))
                     if not self._codebase.has_method(method_name):
                         # The method may be deleted or rename during reading time
-                        method_name = self._codebase.choose_random_method()
-                        continue
+                        break
+                    changed_methods.add(method_name)
                     if random() < self._p_grow_method:
                         change_size += self._codebase.add_statement(method_name)
                     else:
@@ -71,6 +70,9 @@ class Developer:
                                 callee_name = self._memory[floor(random() * memory_size)]
                             else:
                                 callee_name = self._codebase.choose_random_method()
+                            # if random() > 0.5:
+                            #     # Evolve the existing method
+                            #     change_size += self._codebase.add_parameter(callee_name)
                         change_size += self._codebase.add_method_call(method_name, callee_name)
                     self._memory.append(method_name)
                     # walk to a neighbor
@@ -170,13 +172,13 @@ class Manager:
         while True:
             if self.tasks < 10:
                 # thinking out new task
-                logging.info('Creating new task...')
-                yield self.env.timeout(20)
+                logging.info('%d: Creating new task...' % self.env.now)
+                yield self.env.timeout(15)
                 self.tasks += 1
                 logging.info('Task created, queue size: %d' % self.tasks)
             else:
                 # recruiting new developer
-                logging.info('Recruiting new developer')
+                logging.info('%d: Recruiting new developer' % self.env.now)
                 yield self.env.timeout(20)
                 self.developers.append(Developer(self))
                 logging.info('Developer joined, team size: %d' % len(self.developers))

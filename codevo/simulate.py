@@ -32,4 +32,5 @@ if __name__ == '__main__':
     codebase = Codebase()
     m = Manager(env, codebase)
     env.run(until=options.time)
+    print('Number of developers: ', len(m.developers))
     codebase.save(options.output_dir)

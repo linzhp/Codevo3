@@ -121,7 +121,9 @@ class Codebase:
         :return:
         """
         # remove method invocation
-        change_size = 1
+        method_info = self._method_call_graph.node[method_name]
+        method = method_info['method']
+        change_size = len(method.body)
         for caller_name in self._method_call_graph.predecessors_iter(method_name):
             caller_info = self._method_call_graph.node[caller_name]
             caller = caller_info['method']
@@ -131,8 +133,6 @@ class Codebase:
                            ]
             change_size += old_size - len(caller.body)
             caller_info['fitness'] = random()
-        method_info = self._method_call_graph.node[method_name]
-        method = method_info['method']
         class_name = method_info['class_name']
         klass = self._inheritance_graph.node[class_name]['class']
         klass.body.remove(method)
@@ -231,7 +231,7 @@ class Codebase:
         to_class_body = self._inheritance_graph.node[to_class_name]['class'].body
         to_class_body.append(method)
         method_info['class_name'] = to_class_name
-        change_size = 1
+        change_size = len(method.body)
         # update references
         for method_invocation in self.method_invocations(method_name):
             method_invocation.target = Name(to_class_name)
