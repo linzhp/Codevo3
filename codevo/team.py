@@ -1,6 +1,6 @@
 import logging
 from random import random, lognormvariate
-from math import floor, exp
+from math import floor, exp, ceil
 
 class Developer:
     def __init__(self, manager):
@@ -18,27 +18,20 @@ class Developer:
 
         self._env.process(self.work())
 
-    def actions_needed(self):
-        a = 10 # floor(lognormvariate(10, 5))
-        return a if a > 0 else 1
-
     def work(self):
         while True:
             change_size = 0
             if self._manager.has_more_tasks():
                 # developing new features
-                self._manager.assign_task()
-                changed_methods = set()
+                task_size = self._manager.assign_task()
                 method_name = self._codebase.choose_random_method()
-                while method_name is not None and method_name not in changed_methods:
-                    if method_name is None:
-                        break
+                for i in range(task_size):
                     # inspect the method
                     yield self._env.timeout(self.get_reading_time(method_name))
                     if not self._codebase.has_method(method_name):
                         # The method may be deleted or rename during reading time
-                        break
-                    changed_methods.add(method_name)
+                        method_name = self._codebase.choose_random_method()
+                        continue
                     if random() < self._p_grow_method:
                         change_size += self._codebase.add_statement(method_name)
                     else:
@@ -77,6 +70,8 @@ class Developer:
                     self._memory.append(method_name)
                     # walk to a neighbor
                     method_name = self._codebase.choose_random_neighbor(method_name)
+                    if method_name is None:
+                        method_name = self._codebase.choose_random_method()
             else:
                 # refactoring
                 n = random()
@@ -167,13 +162,14 @@ class Manager:
     def assign_task(self):
         self.tasks -= 1
         logging.info('Task assigned, queue size: %d' % self.tasks)
+        return ceil(lognormvariate(2, 1))
 
     def work(self):
         while True:
             if self.tasks < 10:
                 # thinking out new task
                 logging.info('%d: Creating new task...' % self.env.now)
-                yield self.env.timeout(15)
+                yield self.env.timeout(17)
                 self.tasks += 1
                 logging.info('Task created, queue size: %d' % self.tasks)
             else:
