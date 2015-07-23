@@ -36,10 +36,10 @@ class Evolver:
                                                    })
 
     def step(self):
-        p_create_method = 12
-        p_call_method = 17
-        p_delete_method = 1
-        p_update_method = 88
+        p_create_method = 0.1
+        p_call_method = 0.14
+        p_delete_method = 0.01
+        p_update_method = 0.75
         change_size = 0
         while change_size == 0:
             action = sample([
@@ -89,7 +89,7 @@ class Evolver:
     def call_method(self, caller_name=None, callee_name=None):
         logging.info('calling a method')
         caller_info = self.reference_graph.node[caller_name] if caller_name \
-            else sample([(data, len(data['method'].body)) for data in self.reference_graph.node.values()])
+            else sample([(data, len(data['method'].body) + 1) for data in self.reference_graph.node.values()])
         callee_info = self.reference_graph.node[callee_name or self.choose_callee()]
         self.code_modifier.add_method_call(
             caller_info['method'], callee_info['method'], callee_info['class'])

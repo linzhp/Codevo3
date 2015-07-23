@@ -57,8 +57,9 @@ if __name__ == '__main__':
             writer.writerow({'class': class_name,
                              'subclasses': in_degree,
                              'lines': java_printer.result.count('\n') + 1})
-            with open(os.path.join('output/src', class_name + '.java'), 'w') as java_file:
-                java_file.write(java_printer.result)
+            if options.save_source:
+                with open(os.path.join('output/src', class_name + '.java'), 'w') as java_file:
+                    java_file.write(java_printer.result)
 
     with open(os.path.join(options.output_dir, 'references.json'), 'w') as ref_file:
         data = json_graph.node_link_data(evolver.reference_graph)
