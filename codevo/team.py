@@ -9,7 +9,7 @@ class Developer:
         self._memory = []
         self._codebase = manager.codebase
         self._p_grow_method = 0.5
-        self._p_create_method = 0.3
+        self._p_create_method = 0.2
         self._p_create_class = 0.1
         self._p_has_super = 0.5
         # refactorings
@@ -169,7 +169,7 @@ class Manager:
             if self.tasks < 10:
                 # thinking out new task
                 logging.info('%d: Creating new task...' % self.env.now)
-                yield self.env.timeout(17)
+                yield self.env.timeout(20)
                 self.tasks += 1
                 logging.info('Task created, queue size: %d' % self.tasks)
             else:
