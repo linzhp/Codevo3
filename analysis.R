@@ -1,5 +1,6 @@
 library(data.table)
 library(ggplot2)
+library(poweRlaw)
 
 get_min_fitness <- function(num_steps, fitness_file) {
   data_file <- file(fitness_file, 'r')
@@ -67,4 +68,11 @@ ggplot.ccdf <- function(data, xlab='x', ylab='CCDF', xbreaks=NULL, ybreaks=NULL)
     scale_y <- scale_y_log10(breaks=ybreaks)
   }
   qplot(x, y, data=df, xlab=xlab, ylab=ylab) + scale_x + scale_y
+}
+
+test_power_law <- function(data) {
+  pl <- displ$new(data)
+  pl$xmin <- estimate_xmin(pl)
+  bs <- bootstrap_p(pl, thread=3)
+  bs$p
 }

@@ -267,7 +267,7 @@ class Codebase:
         self.counter += 1
         return var
 
-    def save(self, output_dir):
+    def save(self, output_dir, save_src):
         with open(path.join(output_dir, 'commits.csv'), 'w', newline='') as commits_file:
             writer = csv.DictWriter(commits_file, ['min_fitness', 'change_size'])
             writer.writeheader()
@@ -283,8 +283,9 @@ class Codebase:
                 writer.writerow({'class': class_name,
                                  'subclasses': in_degree,
                                  'lines': java_printer.result.count('\n') + 1})
-                with open(path.join(output_dir, 'src', class_name + '.java'), 'w') as java_file:
-                    java_file.write(java_printer.result)
+                if save_src:
+                    with open(path.join(output_dir, 'src', class_name + '.java'), 'w') as java_file:
+                        java_file.write(java_printer.result)
 
         with open(path.join(output_dir, 'methods.csv'), 'w', newline='') as methods_file:
             writer = csv.DictWriter(methods_file, ['method', 'class', 'ref_count'])

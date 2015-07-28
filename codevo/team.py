@@ -9,7 +9,7 @@ class Developer:
         self._memory = []
         self._codebase = manager.codebase
         self._p_grow_method = 0.5
-        self._p_create_method = 0.2
+        self._p_create_method = 0.3
         self._p_create_class = 0.1
         self._p_has_super = 0.5
         # refactorings
