@@ -144,7 +144,8 @@ class Developer:
         reading_time = self._codebase.size_of(method_name)
         if method_name in self._memory:
             # Forgetting curve: https://en.wikipedia.org/wiki/Forgetting_curve
-            reading_time *= 1 - exp(-self._memory.index(method_name)/40)
+            t = len(self._memory) - self._memory.index(method_name) - 1
+            reading_time *= 1 - exp(-t/40)
         return reading_time + 1
 
 
