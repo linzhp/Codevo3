@@ -70,9 +70,22 @@ ggplot.ccdf <- function(data, xlab='x', ylab='CCDF', xbreaks=NULL, ybreaks=NULL)
   qplot(x, y, data=df, xlab=xlab, ylab=ylab) + scale_x + scale_y
 }
 
-test_power_law <- function(data) {
+create_power_law_obj <- function(data) {
   pl <- displ$new(data)
   pl$xmin <- estimate_xmin(pl)
+  pl  
+}
+
+test_power_law <- function(data) {
+  pl <- create_power_law_obj(data)
   bs <- bootstrap_p(pl, thread=3)
   bs$p
+}
+
+compare_alternatives <- function(data, alt_dist) {
+  pl <- create_power_law_obj(data)
+  alt <- alt_dist$new(data)
+  alt$xmin <- pl$xmin
+  alt$pars <- estimate_pars(alt)
+  compare_distributions(pl, alt)
 }

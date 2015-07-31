@@ -273,20 +273,6 @@ class Codebase:
             writer.writeheader()
             writer.writerows(self._revisions)
 
-        with open(path.join(output_dir, 'classes.csv'), 'w', newline='') as classes_file:
-            writer = csv.DictWriter(classes_file, ['class', 'subclasses', 'lines'])
-            writer.writeheader()
-            for class_name, in_degree in self._inheritance_graph.in_degree_iter():
-                klass = self._inheritance_graph.node[class_name]['class']
-                java_printer = JavaPrinter()
-                klass.accept(java_printer)
-                writer.writerow({'class': class_name,
-                                 'subclasses': in_degree,
-                                 'lines': java_printer.result.count('\n') + 1})
-                if save_src:
-                    with open(path.join(output_dir, 'src', class_name + '.java'), 'w') as java_file:
-                        java_file.write(java_printer.result)
-
         with open(path.join(output_dir, 'methods.csv'), 'w', newline='') as methods_file:
             writer = csv.DictWriter(methods_file, ['method', 'class', 'ref_count'])
             writer.writeheader()
@@ -308,6 +294,23 @@ class Codebase:
                 self._method_call_graph.node[e[1]]['class_name'])
         for e in self._inheritance_graph.edges_iter():
             association_graph.add_edge(*e)
+        with open(path.join(output_dir, 'classes.csv'), 'w', newline='') as classes_file:
+            writer = csv.DictWriter(classes_file, ['class', 'subclasses', 'lines', 'degree'])
+            writer.writeheader()
+            for class_name, in_degree in self._inheritance_graph.in_degree_iter():
+                klass = self._inheritance_graph.node[class_name]['class']
+                java_printer = JavaPrinter()
+                klass.accept(java_printer)
+                writer.writerow({'class': class_name,
+                                 'subclasses': in_degree,
+                                 'lines': java_printer.result.count('\n') + 1,
+                                 'degree': association_graph.degree(class_name)
+                                 if class_name in association_graph else 0
+                                 })
+                if save_src:
+                    with open(path.join(output_dir, 'src', class_name + '.java'), 'w') as java_file:
+                        java_file.write(java_printer.result)
+
         with open(path.join(output_dir, 'classes.json'), 'w') as classes_file:
             data = json_graph.node_link_data(association_graph)
             json.dump(data, classes_file, skipkeys=True)
