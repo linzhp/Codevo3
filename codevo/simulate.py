@@ -46,9 +46,9 @@ if __name__ == '__main__':
                 'class': evolver.reference_graph.node[method_name]['class'].name,
                 'ref_count': in_degree
             })
-
+    collab_graph = evolver.build_class_association()
     with open(os.path.join(options.output_dir, 'classes.csv'), 'w', newline='') as sub_file:
-        writer = csv.DictWriter(sub_file, ['class', 'subclasses', 'lines'])
+        writer = csv.DictWriter(sub_file, ['class', 'subclasses', 'lines', 'degree'])
         writer.writeheader()
         for class_name, in_degree in evolver.inheritance_graph.in_degree_iter():
             klass = evolver.inheritance_graph.node[class_name]['class']
@@ -56,7 +56,9 @@ if __name__ == '__main__':
             klass.accept(java_printer)
             writer.writerow({'class': class_name,
                              'subclasses': in_degree,
-                             'lines': java_printer.result.count('\n') + 1})
+                             'lines': java_printer.result.count('\n') + 1,
+                             'degree': collab_graph.degree(class_name) if class_name in collab_graph else 0
+                             })
             if options.save_source:
                 with open(os.path.join('output/src', class_name + '.java'), 'w') as java_file:
                     java_file.write(java_printer.result)
@@ -66,5 +68,5 @@ if __name__ == '__main__':
         json.dump(data, ref_file, skipkeys=True, default=lambda d: None)
 
     with open(os.path.join(options.output_dir, 'associations.json'), 'w') as asso_file:
-        data = json_graph.node_link_data(evolver.build_class_association())
+        data = json_graph.node_link_data(collab_graph)
         json.dump(data, asso_file, skipkeys=True)
