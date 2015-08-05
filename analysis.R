@@ -76,9 +76,9 @@ create_power_law_obj <- function(data) {
   pl  
 }
 
-test_power_law <- function(data) {
+test_power_law <- function(data, threads=3) {
   pl <- create_power_law_obj(data)
-  bs <- bootstrap_p(pl, thread=3)
+  bs <- bootstrap_p(pl, thread=threads)
   bs$p
 }
 

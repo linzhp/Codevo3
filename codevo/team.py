@@ -55,7 +55,7 @@ class Developer:
                                 class_name = self._codebase.choose_random_class()
                             c, callee_name = self._codebase.create_method(class_name)
                             change_size += c
-                            self._memory.append(callee_name)
+                            self._memory.insert(0, callee_name)
                         else:
                             # call an existing method
                             memory_size = len(self._memory)
@@ -67,7 +67,7 @@ class Developer:
                             #     # Evolve the existing method
                             #     change_size += self._codebase.add_parameter(callee_name)
                         change_size += self._codebase.add_method_call(method_name, callee_name)
-                    self._memory.append(method_name)
+                    self._memory.insert(0, method_name)
                     # walk to a neighbor
                     method_name = self._codebase.choose_random_neighbor(method_name)
                     if method_name is None:
@@ -84,7 +84,7 @@ class Developer:
                     c, new_method_name = self._codebase.rename_method(unfit_method_name)
                     change_size += c
                     self._memory = [new_method_name if m == unfit_method_name else m for m in self._memory]
-                    self._memory.append(new_method_name)
+                    self._memory.insert(0, new_method_name)
                 elif self._codebase.number_of_classes() == 1 or n > self._p_rename + self._p_move:
                     # merge two methods
                     delete_method_name, update_method_name = self._codebase.least_fit_methods(2)
@@ -106,14 +106,14 @@ class Developer:
                     self._memory = [m for m in self._memory if m != delete_method_name]
                     # Add a parameter to another method
                     change_size += self._codebase.add_parameter(update_method_name)
-                    self._memory.append(update_method_name)
+                    self._memory.insert(0, update_method_name)
                     for method_name in self._codebase.caller_names(update_method_name):
-                        self._memory.append(method_name)
+                        self._memory.insert(0, method_name)
                     # Make the callers of the former method call the latter method
                     for method_name in caller_names:
                         # treat them as updating method calls, so the change size doesn't increase here
                         self._codebase.add_method_call(method_name, update_method_name)
-                        self._memory.append(method_name)
+                        self._memory.insert(0, method_name)
                 else:
                     unfit_method_name = self._codebase.least_fit_methods()[0]
                     yield self._env.timeout(self.get_reading_time(unfit_method_name))
@@ -131,7 +131,7 @@ class Developer:
                             reference_counts[class_name] = 1
                     closest_class_name = max(reference_counts, key=lambda c: reference_counts[c])
                     change_size += self._codebase.move_method(unfit_method_name, closest_class_name)
-                    self._memory.append(unfit_method_name)
+                    self._memory.insert(0, unfit_method_name)
             if change_size > 0:
                 self._codebase.commit(change_size)
 
@@ -144,7 +144,7 @@ class Developer:
         reading_time = self._codebase.size_of(method_name)
         if method_name in self._memory:
             # Forgetting curve: https://en.wikipedia.org/wiki/Forgetting_curve
-            t = len(self._memory) - self._memory.index(method_name) - 1
+            t = self._memory.index(method_name)
             reading_time *= 1 - exp(-t/40)
         return reading_time + 1
 
