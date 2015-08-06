@@ -27,7 +27,7 @@ if __name__ == '__main__':
     random_seed = round(time())
     print('Using seed', random_seed)
     random.seed(random_seed)
-    logging.basicConfig(level=logging.INFO)
+    # logging.basicConfig(level=logging.INFO)
     env = simpy.Environment()
     codebase = Codebase()
     m = Manager(env, codebase)

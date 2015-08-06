@@ -82,9 +82,8 @@ test_power_law <- function(data, threads=3) {
   bs$p
 }
 
-compare_alternatives <- function(data, alt_dist) {
-  pl <- create_power_law_obj(data)
-  alt <- alt_dist$new(data)
+compare_alternatives <- function(pl, alt_dist) {
+  alt <- alt_dist$new(pl$dat)
   alt$xmin <- pl$xmin
   alt$pars <- estimate_pars(alt)
   compare_distributions(pl, alt)
