@@ -158,18 +158,11 @@ class Evolver:
         for caller_name in void_callers:
             change_size += self.delete_method(caller_name)
         if len(klass.body) == 0:
-            # remove the class and all its subclasses
-            # cannot use predecessors_iter because the elements will be removed from the graph
-            for class_name in self.inheritance_graph.predecessors(klass.name):
+            # remove the class and update all its subclasses
+            for class_name in self.inheritance_graph.predecessors_iter(klass.name):
                 c = self.inheritance_graph.node[class_name]['class']
-                method_names = []
-                for member in c.body:
-                    if isinstance(member, MethodDeclaration):
-                        method_names.append(member.name)
-                for m in method_names:
-                    change_size += self.delete_method(m)
-                # do not need to remove the subclass from the graph because it was
-                # removed after its last method was deleted
+                c.extends = None
+                change_size += 1
             self.inheritance_graph.remove_node(klass.name)
             change_size += 1
         return change_size
