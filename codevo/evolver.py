@@ -37,9 +37,9 @@ class Evolver:
 
     def step(self):
         p_create_method = 0.1
-        p_call_method = 0.14
+        p_call_method = 0.4
+        p_update_method = 0.49
         p_delete_method = 0.01
-        p_update_method = 0.75
         change_size = 0
         while change_size == 0:
             action = sample([
@@ -154,9 +154,6 @@ class Evolver:
         change_size += len(method_info['method'].body)
         self.reference_graph.remove_node(method_name)
         change_size += 1
-        # recursively remove all empty callers
-        for caller_name in void_callers:
-            change_size += self.delete_method(caller_name)
         if len(klass.body) == 0:
             # remove the class and update all its subclasses
             for class_name in self.inheritance_graph.predecessors_iter(klass.name):
@@ -165,6 +162,10 @@ class Evolver:
                 change_size += 1
             self.inheritance_graph.remove_node(klass.name)
             change_size += 1
+        # recursively remove all empty callers
+        # The recursive call has to be at the end to avoid deleting a class twice
+        for caller_name in void_callers:
+            change_size += self.delete_method(caller_name)
         return change_size
 
     def create_class(self):
