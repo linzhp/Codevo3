@@ -164,9 +164,10 @@ class Evolver:
             change_size += 1
         # recursively remove all empty callers
         # The recursive call has to be at the end to avoid deleting a class twice
-        # the caller may have been delete in when deleting other caller at this point
-        for caller_name in void_callers and caller_name in self.reference_graph:
-            change_size += self.delete_method(caller_name)
+        for caller_name in void_callers:
+            # the caller may have been delete in when deleting other caller at this point
+            if caller_name in self.reference_graph:
+                change_size += self.delete_method(caller_name)
         return change_size
 
     def create_class(self):
