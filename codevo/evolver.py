@@ -36,10 +36,10 @@ class Evolver:
                                                    })
 
     def step(self):
-        p_create_method = 0.1
-        p_call_method = 0.4
-        p_update_method = 0.49
-        p_delete_method = 0.01
+        p_create_method = 0.2
+        p_call_method = 1 - p_create_method
+        p_delete_method = 0.1
+        p_update_method = 1 - p_delete_method
         change_size = 0
         while change_size == 0:
             action = sample([
@@ -74,17 +74,8 @@ class Evolver:
                        for node, data in self.inheritance_graph.nodes_iter(data=True)]
             klass = sample(classes)
         method = self.code_modifier.create_method(klass)
-        self.reference_graph.add_node(method.name,
-                                      {'method': method,
-                                       'class': klass
-                                       }
-                                      )
-        # make a call from the new method
-        self.call_method(method.name)
-        # call the new method
-        caller_name = self.choose_unfit_method()
-        self.call_method(caller_name, method.name)
-        return 3
+        self.reference_graph.add_node(method.name, {'method': method, 'class': klass, 'fitness': random()})
+        return 1
 
     def call_method(self, caller_name=None, callee_name=None):
         logging.info('calling a method')
@@ -99,27 +90,11 @@ class Evolver:
 
     def update_method(self):
         logging.info('updating a method')
-        method_name = self.choose_unfit_method()
-        method_info = self.reference_graph.node[method_name]
-        # The method can be empty because it is the only remaining method
-        if len(method_info['method'].body) == 0 or random() < 0.67:
-            self.code_modifier.add_statement(method_info['method'])
-        else:
-            deleted_stmt = self.code_modifier.delete_statement(method_info['method'])
-            if isinstance(deleted_stmt, MethodInvocation):
-                # check if there is any remaining references
-                remaining_method_calls = False
-                for stmt in method_info['method'].body:
-                    if isinstance(stmt, MethodInvocation) and stmt.name == deleted_stmt.name:
-                        remaining_method_calls = True
-                        break
-                if not remaining_method_calls:
-                    self.reference_graph.remove_edge(method_name, deleted_stmt.name)
-        if len(method_info['method'].body) == 0:
-            return self.delete_method(method_name) + 1
-        else:
-            method_info['fitness'] = random()
-            return 1
+        method = self.choose_unfit_method()
+        method_info = self.reference_graph.node[method]
+        self.code_modifier.add_statement(method_info['method'])
+        method_info['fitness'] = random()
+        return 1
 
     def delete_method(self, method_name=None):
         """
