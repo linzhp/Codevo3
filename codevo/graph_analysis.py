@@ -2,6 +2,7 @@ __author__ = 'zplin'
 import sys
 import json
 import csv
+from os import path
 import numpy as np
 from networkx import Graph, transitivity, clustering, average_shortest_path_length, connected_component_subgraphs, \
     density
@@ -19,8 +20,8 @@ if __name__ == '__main__':
     cc = clustering(g)
     print('Average clustering coefficient:', np.mean(list(cc.values())))
     for subgraph in connected_component_subgraphs(g):
-        if subgraph.size() > 1:
-            print('Average shortest path length for subgraph of', subgraph.size(), ':',
+        if subgraph.number_of_nodes() > 1:
+            print('Average shortest path length for subgraph of', subgraph.number_of_nodes(), ':',
                   average_shortest_path_length(subgraph))
     # Calculating average clustering coefficient for different degrees
     degree_cc = {}
@@ -29,7 +30,7 @@ if __name__ == '__main__':
             degree_cc[degree] = []
         degree_cc[degree].append(cc[node])
 
-    with open('output/clustering.csv', 'w', newline='') as cc_file:
+    with open(path.join(path.dirname(sys.argv[1]), 'clustering.csv'), 'w', newline='') as cc_file:
         writer = csv.DictWriter(cc_file, ['degree', 'average_cc'])
         writer.writeheader()
         for degree in degree_cc:
