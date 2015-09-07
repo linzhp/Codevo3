@@ -2,6 +2,7 @@ __author__ = 'zplin'
 import sys
 import json
 import csv
+from os import path
 import numpy as np
 from networkx import Graph, transitivity, clustering, average_shortest_path_length, connected_component_subgraphs
 from networkx.readwrite import json_graph
@@ -26,7 +27,7 @@ if __name__ == '__main__':
             degree_cc[degree] = []
         degree_cc[degree].append(cc[node])
 
-    with open('output/clustering.csv', 'w', newline='') as cc_file:
+    with open(path.join(path.dirname(sys.argv[1]), 'clustering.csv'), 'w', newline='') as cc_file:
         writer = csv.DictWriter(cc_file, ['degree', 'average_cc'])
         writer.writeheader()
         for degree in degree_cc:
