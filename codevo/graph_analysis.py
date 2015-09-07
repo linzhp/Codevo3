@@ -18,8 +18,9 @@ if __name__ == '__main__':
     cc = clustering(g)
     print('Average clustering coefficient:', np.mean(list(cc.values())))
     for subgraph in connected_component_subgraphs(g):
-        if subgraph.size() > 1:
-            print('Average shortest path length:', average_shortest_path_length(subgraph))
+        if subgraph.number_of_nodes() > 1:
+            print('Average shortest path length for subgraph of', subgraph.number_of_nodes(), ':',
+                  average_shortest_path_length(subgraph))
     # Calculating average clustering coefficient for different degrees
     degree_cc = {}
     for node, degree in g.degree_iter():
