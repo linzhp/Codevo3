@@ -55,7 +55,7 @@ get_commit_sizes <- function(steps_dt, f0, mean_min_size=NULL) {
     commit_size
 }
 
-ggplot.ccdf <- function(data, xlab='x', ylab='CCDF', xbreaks=NULL, ybreaks=NULL) {
+ggplot.ccdf <- function(data, xlab='x', ylab='CCDF', xbreaks=NULL, ybreaks=NULL, c=NULL, alpha=NULL) {
   x <- sort(data)
   y <- 1-((1:(length(x))-1)/length(x))
   df <- data.frame(x=x, y=y)
@@ -67,7 +67,11 @@ ggplot.ccdf <- function(data, xlab='x', ylab='CCDF', xbreaks=NULL, ybreaks=NULL)
   if (!is.null(ybreaks)) {
     scale_y <- scale_y_log10(breaks=ybreaks)
   }
-  qplot(x, y, data=df, xlab=xlab, ylab=ylab) + scale_x + scale_y
+  g <- qplot(x, y, data=df, xlab=xlab, ylab=ylab) + scale_x + scale_y
+  if (!is.null(c) && !is.null(alpha)) {
+    g <- g + geom_line(aes(x, c*x^(-alpha+1)))
+  }
+  g
 }
 
 create_power_law_obj <- function(data) {
