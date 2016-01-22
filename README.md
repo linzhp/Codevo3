@@ -6,15 +6,24 @@ If you are interested in replicating the experiments in my MSR 2015 paper, pleas
 
 ## Dependencies
 * Python 3
-* [Simpy](http://simpy.readthedocs.org/en/3.0.8/)
+* [Simpy version 3](http://simpy.readthedocs.org/en/3.0.8/)  (simpy v2 fails, even with python3)
 * [NetworkX](https://networkx.github.io/)
-* [plyj](https://github.com/musiKk/plyj), which depends on [ply](http://www.dabeaz.com/ply/)
+* [ply](http://www.dabeaz.com/ply/)
+* [plyj (on github)](https://github.com/musiKk/plyj)
+
+On a linux box:
+```
+sudo apt-get install python3-simpy3
+sudo apt-get install python3-networkx
+sudo apt-get install ply
+git clone https://github.com/musiKk/plyj
+```
 
 ## Running the simulation
 Type the following command:
 
 ```
-python3 codevo/simulate.py 200000
+env PYTHONPATH=. python3 codevo/simulate.py 200000
 ```
 
 The number at the end of the command is the number of steps in the simulation. It can be changed. The results are saved in 3 CSV files under `output` directory.
