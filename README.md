@@ -6,7 +6,7 @@ If you are interested in replicating the experiments in my MSR 2015 paper, pleas
 
 ## Dependencies
 * Python 3
-* [Simpy](simpy.readthedocs.org)
+* [Simpy](http://simpy.readthedocs.org/en/3.0.8/)
 * [NetworkX](https://networkx.github.io/)
 * [plyj](https://github.com/musiKk/plyj), which depends on [ply](http://www.dabeaz.com/ply/)
 
