@@ -28,7 +28,7 @@ env PYTHONPATH=. python3 codevo/simulate.py 200000
 
 The number at the end of the command is the number of steps in the simulation. It can be changed. The results are saved in 3 CSV files under `output` directory.
 
-If you are interested in seeing the resulting source code, uncomment the last two lines of `codevo/simulate.py` before running the simulation.
+If you are interested in seeing the resulting source code, pass `-s` option to the command line.
 
 ## Analysis
 The results can be analyzed with R. In `analysis.R`, `get_commit_sizes` takes a `data.table` object read from `output/steps.csv`, and returns a vector of commit sizes. `ggplot.ccdf` plots the CCDF of data stored in a vector.
