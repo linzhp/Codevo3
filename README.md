@@ -6,8 +6,9 @@ If you are interested in replicating the experiments in my MSR 2015 paper, pleas
 
 ## Dependencies
 * Python 3
+* NumPy 1.11
 * [Simpy version 3](http://simpy.readthedocs.org/en/3.0.8/)  (simpy v2 fails, even with python3)
-* [NetworkX](https://networkx.github.io/)
+* [NetworkX 1.11](https://networkx.github.io/)
 * [ply](http://www.dabeaz.com/ply/)
 * [plyj (on github)](https://github.com/musiKk/plyj)
 
@@ -17,6 +18,8 @@ sudo apt-get install python3-simpy3
 sudo apt-get install python3-networkx
 sudo apt-get install ply
 git clone https://github.com/musiKk/plyj
+cd /path/to/Codevo3
+export PYTHONPATH=.:/path/to/plyj/
 ```
 
 ## Running the simulation
