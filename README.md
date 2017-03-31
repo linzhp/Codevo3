@@ -26,7 +26,7 @@ export PYTHONPATH=.:/path/to/plyj/
 Type the following command:
 
 ```
-env PYTHONPATH=. python3 codevo/simulate.py 200000
+python3 codevo/simulate.py 200000
 ```
 
 The number at the end of the command is the number of steps in the simulation. It can be changed. The results are saved in 3 CSV files under `output` directory.
