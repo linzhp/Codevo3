@@ -6,21 +6,35 @@ If you are interested in replicating the experiments in my MSR 2015 paper, pleas
 
 ## Dependencies
 * Python 3
-* NumPy 1.11
-* [Simpy version 3](http://simpy.readthedocs.org/en/3.0.8/)  (simpy v2 fails, even with python3)
+* NumPy 1.12
+* [Simpy version 3.0](http://simpy.readthedocs.org/en/latest/)  (simpy v2 fails, even with python3)
 * [NetworkX 1.11](https://networkx.github.io/)
 * [ply](http://www.dabeaz.com/ply/)
-* [plyj (on github)](https://github.com/musiKk/plyj)
+* [plyj](https://github.com/musiKk/plyj)
 
-On a linux box:
+### Ubuntu
+
 ```
-sudo apt-get install python3-simpy3
-sudo apt-get install python3-networkx
-sudo apt-get install ply
+sudo apt-get install python3-simpy3 python3-networkx ply
 git clone https://github.com/musiKk/plyj
-cd /path/to/Codevo3
-export PYTHONPATH=.:/path/to/plyj/
+cd /path/to/plyj
+cp -r ./plyj ~/.local/lib/python3.6/site-packages
 ```
+
+Replace `python3.6` in the above command with the actual python version on your machine.
+
+### Windows
+Download and install Anaconda 3, which includes Python 3, NumPy, NetworkX. Then:
+
+```
+pip install simpy ply
+git clone https://github.com/musiKk/plyj
+mkdir %APPDATA%\Python\python36\site-packages\plyj
+cd \path\to\plyj
+xcopy /I .\plyj %APPDATA%\Python\python36\site-packages\plyj
+```
+
+Replace `python36` in the above command with the actual python version on your machine.
 
 ## Running the simulation
 Type the following command:
