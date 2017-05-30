@@ -6,8 +6,8 @@ import simpy
 from time import time
 from argparse import ArgumentParser
 
-from codevo import Codebase
-from codevo.team import Manager
+from codebase import Codebase
+from team import Manager
 
 if __name__ == '__main__':
     arg_parser = ArgumentParser(description='Run the simulation')

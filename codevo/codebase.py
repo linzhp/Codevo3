@@ -10,8 +10,8 @@ import csv
 from plyj.model import *
 from plyj.parser import Parser
 
-from codevo.utils import sample
-from codevo.java_printer import JavaPrinter
+from utils import sample
+from java_printer import JavaPrinter
 
 
 class Codebase:
